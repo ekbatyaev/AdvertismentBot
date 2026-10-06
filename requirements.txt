@@ -1,0 +1,29 @@
+# Основные зависимости
+aiogram~=3.14.0
+openai~=2.14.0
+pandas~=2.2.3
+openpyxl~=3.1.2
+
+# Веб и парсинг
+aiohttp~=3.10.10
+beautifulsoup4~=4.12.3
+selenium~=4.21.0
+webdriver-manager~=4.0.2
+
+# API и веб-фреймворки
+fastapi~=0.115.6
+pydantic~=2.9.2
+httpx~=0.28.0
+
+# Утилиты и конфигурация
+python-dotenv~=1.0.1
+python-dateutil~=2.9.0.post0
+pytz~=2024.2
+
+# Для работы с файлами и данными
+numpy~=2.2.0  # зависимость pandas
+xlrd~=2.0.1   # для чтения старых Excel файлов
+XlsxWriter~=3.2.0  # альтернатива openpyxl
+
+# Асинхронность
+asyncio~=3.4.3

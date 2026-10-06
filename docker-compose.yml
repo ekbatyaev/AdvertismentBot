@@ -1,0 +1,13 @@
+services:
+  legal-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: legal-bot-container
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
