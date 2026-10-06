@@ -1,0 +1,12 @@
+.env
+*.env
+__pycache__/
+*.pyc
+.venv/
+venv/
+old_code/
+logs/
+.idea/
+.DS_Store
+*.json
+EOF
