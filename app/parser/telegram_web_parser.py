@@ -1,36 +1,12 @@
 import time
 from datetime import datetime, timezone
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service as ChromeService
-from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
-from copy import copy
-import logging
+from app.settings import logger, MOSCOW_TZ
+from app.parser.driver import setup_driver
+from copy import deepcopy
 import re
 
-logger = logging.getLogger(__name__)
-
-def setup_driver():
-    options = webdriver.ChromeOptions()
-    options.add_argument('--headless')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--disable-gpu')
-    options.add_argument('--window-size=1920,1080')
-    options.add_argument(
-        "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    options.add_experimental_option('useAutomationExtension', False)
-    options.add_argument('--disable-blink-features=AutomationControlled')
-
-    try:
-        service = ChromeService(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=options)
-        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-        return driver
-    except Exception as e:
-        logger.error(f"Ошибка при инициализации драйвера: {e}")
-        return None
+driver = setup_driver()
 
 def parse_post_content(full_text: str):
     """Очистка текста поста с фильтрацией служебной информации"""
@@ -103,7 +79,7 @@ def extract_post_datetime(post_div):
 
 def extract_text_from_post(post_div):
     """Извлечение текста из поста"""
-    post_div = copy(post_div)
+    post_div = deepcopy(post_div)
 
     for unwanted in post_div.select(
         '.tgme_widget_message_reply, '
@@ -223,7 +199,6 @@ def parse_channel_web(channel_username: str, start_dt: datetime = None, end_dt: 
     Парсинг канала Telegram через веб-интерфейс
     КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: прокручиваем ВВЕРХ, а не вниз!
     """
-    driver = setup_driver()
     if not driver:
         logger.error("Не удалось инициализировать драйвер")
         return []
@@ -261,11 +236,9 @@ def parse_channel_web(channel_username: str, start_dt: datetime = None, end_dt: 
             # new_posts_in_this_iteration = 0
             #
             # for post_wrap in all_posts:
-            from copy import copy
 
             all_posts = soup.select('div.tgme_widget_message_wrap')
-            all_posts_copy = [copy(post) for post in all_posts]  # Копия списка
-            print(all_posts)
+            all_posts_copy = [deepcopy(post) for post in all_posts]  # Копия списка
             logger.info(
                 f"Попытка {scroll_attempts}: найдено {len(all_posts)} постов на странице (обработано ранее: {len(processed_post_ids)})")
 
@@ -326,7 +299,6 @@ def parse_channel_web(channel_username: str, start_dt: datetime = None, end_dt: 
                         if start_dt or end_dt:
                             continue
                         post_datetime = None
-                print(all_posts)
                 full_text = extract_text_from_post(post_div)
                 parsed_content = parse_post_content(full_text)
 
@@ -395,10 +367,9 @@ def parse_channel_web(channel_username: str, start_dt: datetime = None, end_dt: 
             driver.quit()
 
 def get_channel_info_web(channel_username: str):
-    driver = setup_driver()
+
     if not driver:
         return None
-
     try:
         url = f"https://t.me/s/{channel_username}"
         driver.get(url)
@@ -429,13 +400,9 @@ def get_channel_info_web(channel_username: str):
 
 # Для отладки
 if __name__ == "__main__":
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
 
-    start_date = datetime(2025, 12, 30, tzinfo=timezone.utc)
-    end_date = datetime(2026, 2, 2, 23, 59, 59, tzinfo=timezone.utc)
+    start_date = datetime(2025, 12, 30, tzinfo=MOSCOW_TZ)
+    end_date = datetime(2026, 2, 2, 23, 59, 59, tzinfo=MOSCOW_TZ)
 
     print(f"Парсим канал Viktor_Komendov_SE с {start_date} по {end_date}")
 

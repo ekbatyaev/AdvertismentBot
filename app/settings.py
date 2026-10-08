@@ -1,5 +1,4 @@
 from zoneinfo import ZoneInfo
-
 from loguru import logger
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict

@@ -20,6 +20,10 @@ class LLMResponseParseError(LLMClientError):
     """Ответ модели пришёл, но его не удалось распарсить в ожидаемый формат."""
 
 
+class LLMBadResponseError(LLMClientError):
+    """Запрос завершился со статусом failed/incomplete (например, модель не найдена)."""
+
+
 _CODE_FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE | re.MULTILINE)
 
 
@@ -113,6 +117,10 @@ class LLMClient:
                         stream=False
                     )
 
+                    if response.status != "completed":
+                        error = response.error.message if response.error else response.incomplete_details
+                        raise LLMBadResponseError(f"Модель вернула status={response.status}: {error}")
+
                     raw_output = response.output_text or ""
 
                     result = _extract_json(raw_output)
@@ -122,18 +130,18 @@ class LLMClient:
 
                 except APITimeoutError as e:
                     last_error = e
-                    logger.warning("Таймаут на попытке %s/%s", attempt, self.max_retries)
+                    logger.warning("Таймаут на попытке {}/{}", attempt, self.max_retries)
 
                 except (APIConnectionError, OpenAIError) as e:
                     last_error = e
                     logger.warning(
-                        "Ошибка запроса на попытке %s/%s: %s", attempt, self.max_retries, e
+                        "Ошибка запроса на попытке {}/{}: {}", attempt, self.max_retries, e
                     )
 
-                except LLMResponseParseError as e:
+                except (LLMBadResponseError, LLMResponseParseError) as e:
                     last_error = e
                     logger.warning(
-                        "Ошибка парсинга ответа на попытке %s/%s: %s",
+                        "Ошибка ответа на попытке {}/{}: {}",
                         attempt,
                         self.max_retries,
                         e,

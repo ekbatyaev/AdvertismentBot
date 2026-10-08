@@ -1,12 +1,12 @@
 import asyncio
 import datetime
-import json
 import time
 from typing import Any
 from typing import Final
 from app.ai.client import client
 from app.settings import settings, logger, MOSCOW_TZ
 from app.ai.models import AiClientSendRequestResponse
+from app.functions import load_data, save_data
 
 
 GUIDED_JSON: Final[dict] = {
@@ -51,24 +51,7 @@ SYSTEM_PROMPT: Final[str] = """\
 Если штраф указан диапазоном, возьми верхнюю границу. Не добавляй никаких других полей."
 """
 
-# Загрузка данных
-
-async def load_data(data_file):
-    try:
-        with open(data_file, 'r', encoding='utf-8') as file:
-            return json.load(file)
-    except FileNotFoundError:
-        return []
-
-
-# Сохранение данных
-
-async def save_data(data_file, data):
-    with open(data_file, 'w', encoding='utf-8') as file:
-        json.dump(data, file, ensure_ascii=False, indent=4)
-
-
-async def analyze_text(text: str, tools: list = None, temperature: float = None) -> list:
+async def analyze_text(text: str, temperature: float = None) -> list:
 
     user_content = \
         [
@@ -91,18 +74,30 @@ async def analyze_text(text: str, tools: list = None, temperature: float = None)
         request_result: AiClientSendRequestResponse = await client.send_request(system_prompt = SYSTEM_PROMPT,
                                                            guided_json = GUIDED_JSON,
                                                            user_content = user_content,
-                                                           tools = tools,
+                                                           tools = [{
+                                                                    "searchIndex": {
+                                                                        "searchIndexIds": [settings.vector_store_id],
+                                                                        "maxNumResults": 10,
+                                                                        "callStrategy": {
+                                                                            "autoCall": {
+                                                                                "instruction": (
+                                                                                    "Для каждого запроса обязательно выполняй поиск по базе знаний и используй результаты."
+                                                                                )
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                                ],
                                                            temperature = temperature)
         analysis_of_texts: list[dict, Any] = request_result.result
         input_tokens: int = request_result.input_tokens
         output_tokens: int = request_result.output_tokens
 
-        logger.info(analysis_of_texts)
         end_time = time.perf_counter_ns()
         response_time_ms = (end_time - start_time) / 1_000_000
 
     except Exception as e:
-        logger.error(f"Ошибка при обработке запроса", e)
+        logger.exception("Ошибка при обработке запроса: {}", e)
         flag_error = True
         raise
 
@@ -146,20 +141,6 @@ if __name__ == "__main__":
     async def main():
 
         single = await analyze_text(text = "Наши конкуренты полное говно",
-                                    tools = [{
-                                                "searchIndex": {
-                                                    "searchIndexIds": [settings.vector_store_id],
-                                                    "maxNumResults": 10,
-                                                    "callStrategy": {
-                                                        "autoCall": {
-                                                            "instruction": (
-                                                                "Для каждого запроса обязательно выполняй поиск по базе знаний и используй результаты."
-                                                            )
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                    ],
                                     temperature=0.0)
         print(single)
     asyncio.run(main())
