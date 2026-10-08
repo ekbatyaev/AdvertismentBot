@@ -5,7 +5,7 @@ from aiogram import F, types
 from aiogram.filters import CommandStart, Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import FSInputFile, CallbackQuery
-from app.settings import logger, MOSCOW_TZ
+from app.settings import settings, logger, MOSCOW_TZ
 from app.functions import load_data
 from app.bot.states import NavigateStates, AnalyzeStates
 from app.bot.functions import safe_send_document, get_channel_analysis, validate_date_pair
@@ -21,8 +21,11 @@ async def handle_admin_request(message: types.Message, state: FSMContext):
     await asyncio.sleep(0.5)
     now = datetime.now(MOSCOW_TZ).replace(tzinfo=None)
     month = now.strftime("%B").lower()
-    file_name = f"logs/{month}_logs_{now.year}.json"
+    file_name = settings.ai_logs_dir / f"{month}_logs_{now.year}.json"
     data = await load_data(file_name)
+    if not data:
+        await message.answer("За текущий месяц запросов ещё не было.")
+        return
     summ_input_tokens, summ_output_tokens, summ_mc_time = 0, 0, 0
     for cell in data:
         summ_input_tokens += cell["input_tokens"]

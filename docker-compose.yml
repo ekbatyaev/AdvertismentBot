@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    shm_size: "1gb"
+    shm_size: "2gb"
     container_name: advertisment-bot
     env_file:
       - .env

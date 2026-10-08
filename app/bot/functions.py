@@ -13,6 +13,7 @@ from app.ai.functions.ad_analysis import analyze_text
 from app.parser.telegram_web_parser import parse_channel_web
 
 
+_PARSER_SEMAPHORE = asyncio.Semaphore(4)
 # Безопасная отправка документа
 
 async def safe_send_document(**kwargs):
@@ -121,7 +122,8 @@ async def get_channel_analysis(channel_name, start_time, end_time, user_id) -> d
         start_time = datetime.strptime(start_time, "%d.%m.%Y").replace(tzinfo=timezone.utc)
         end_time = datetime.strptime(end_time + " 23:59:59", "%d.%m.%Y %H:%M:%S").replace(tzinfo=timezone.utc)
 
-    parse_response = parse_channel_web(channel_name, start_time, end_time)
+    async with _PARSER_SEMAPHORE:
+        parse_response = await asyncio.to_thread(parse_channel_web, channel_name, start_time, end_time)
 
     if not parse_response:
         logger.error("Ошибка парсинга")

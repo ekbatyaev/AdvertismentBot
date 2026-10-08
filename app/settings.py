@@ -2,6 +2,7 @@ from zoneinfo import ZoneInfo
 from loguru import logger
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from dataclasses import field
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -28,10 +29,10 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    telegram_bot_token: str
+    telegram_bot_token: str = field(repr = False)
     yandex_cloud_model: str
     yandex_cloud_folder: str
-    yandex_cloud_api_key: str
+    yandex_cloud_api_key: str = field(repr = False)
     vector_store_id: str
 
     yandex_cloud_llm_url: str

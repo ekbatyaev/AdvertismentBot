@@ -6,8 +6,6 @@ from app.parser.driver import setup_driver
 from copy import deepcopy
 import re
 
-driver = setup_driver()
-
 def parse_post_content(full_text: str):
     """Очистка текста поста с фильтрацией служебной информации"""
     if not full_text or not full_text.strip():
@@ -199,6 +197,8 @@ def parse_channel_web(channel_username: str, start_dt: datetime = None, end_dt: 
     Парсинг канала Telegram через веб-интерфейс
     КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: прокручиваем ВВЕРХ, а не вниз!
     """
+    driver = setup_driver()
+
     if not driver:
         logger.error("Не удалось инициализировать драйвер")
         return []
@@ -358,45 +358,13 @@ def parse_channel_web(channel_username: str, start_dt: datetime = None, end_dt: 
         return final_results
 
     except Exception as e:
-        logger.error(f"Произошла ошибка во время парсинга: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.exception("Произошла ошибка во время парсинга канала {}: {}", channel_username, e)
         return []
     finally:
-        if driver:
+        try:
             driver.quit()
-
-def get_channel_info_web(channel_username: str):
-
-    if not driver:
-        return None
-    try:
-        url = f"https://t.me/s/{channel_username}"
-        driver.get(url)
-        time.sleep(3)
-
-        soup = BeautifulSoup(driver.page_source, 'html.parser')
-
-        name_tag = soup.select_one('div.tgme_channel_info_header_title > span')
-        count_tag = soup.select_one('.tgme_channel_info_counter .counter_value')
-
-        if not name_tag:
-            return None
-
-        name = name_tag.get_text(strip=True)
-        participants_count = count_tag.get_text(strip=True) if count_tag else 'N/A'
-
-        return {
-            "name": name,
-            "username": channel_username,
-            "participants_count": participants_count
-        }
-    except Exception as e:
-        logger.error(f"Ошибка при получении информации о канале ({channel_username}): {e}")
-        return None
-    finally:
-        if driver:
-            driver.quit()
+        except Exception as e:
+            logger.warning("Не удалось закрыть драйвер: {}", e)
 
 # Для отладки
 if __name__ == "__main__":

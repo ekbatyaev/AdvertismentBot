@@ -3,7 +3,7 @@ import json
 import re
 from dataclasses import dataclass
 from typing import Any, Optional
-from openai import AsyncOpenAI, APIConnectionError, APITimeoutError, OpenAIError
+from openai import AsyncOpenAI, APIConnectionError, APITimeoutError, OpenAIError, NOT_GIVEN
 from app.ai.models import AiClientSendRequestResponse
 from app.settings import settings, logger
 
@@ -68,13 +68,53 @@ class LLMClient:
     max_retries: int = 3
     system_prompt: str = ""
 
+    async def search_vector_store(
+        self,
+        query: str,
+        max_num_results: int = 10,
+        rewrite_query: bool = False,
+        score_threshold: Optional[float] = None,
+    ) -> list[dict]:
+        """
+        Ищет фрагменты в векторном хранилище (Vector Store API).
+
+        Возвращает список словарей: filename, score, text.
+        """
+        ranking_options = (
+            {"ranker": "auto", "score_threshold": score_threshold}
+            if score_threshold is not None
+            else NOT_GIVEN
+        )
+
+        async with AsyncOpenAI(
+            api_key=self.api_key,
+            base_url=self.api_base,
+            project=self.folder_id,
+            timeout=self.request_timeout,
+        ) as async_http_client:
+            results = await async_http_client.vector_stores.search(
+                vector_store_id=self.vector_store_id,
+                query=query,
+                max_num_results=max_num_results,
+                rewrite_query=rewrite_query,
+                ranking_options=ranking_options,
+            )
+
+        return [
+            {
+                "filename": item.filename,
+                "score": item.score,
+                "text": "\n".join(part.text for part in item.content),
+            }
+            for item in results.data
+        ]
+
     async def send_request(
         self,
         user_content: Any,
         guided_json: Optional[dict] = None,
         system_prompt: Optional[str] = None,
-        temperature: Optional[int] = None,
-        tools: Optional[list] = None
+        temperature: Optional[float] = None
     ) -> AiClientSendRequestResponse:
         """
         Отправляет запрос в LLM (Yandex Cloud, Responses API) с retry-логикой
@@ -87,9 +127,11 @@ class LLMClient:
         Возвращает распарсенный JSON-объект из output_text ответа модели.
         """
 
-        extra_body = {}
-        if guided_json is not None:
-            extra_body["json_schema"] = guided_json
+        text_format = (
+            {"format": {"type": "json_schema", **guided_json}}
+            if guided_json is not None
+            else NOT_GIVEN
+        )
 
         last_error: Optional[Exception] = None
 
@@ -103,17 +145,16 @@ class LLMClient:
                 try:
                     response = await async_http_client.responses.create(
                         model=f"gpt://{self.folder_id}/{self.model_name}",
-                        instructions=system_prompt,
+                        instructions=self.system_prompt if system_prompt is None else system_prompt,
                         max_output_tokens=self.max_tokens,
-                        temperature=temperature or self.temperature,
-                        tools = tools,
+                        temperature=self.temperature if temperature is None else temperature,
                         input=[
                             {
                                 "role": "user",
                                 "content": user_content,
                             }
                         ],
-                        extra_body=extra_body,
+                        text = text_format,
                         stream=False
                     )
 
@@ -156,16 +197,20 @@ client = LLMClient()
 
 if __name__ == "__main__":
 
-    async def _main() -> None:
+    async def main() -> None:
         result = await client.send_request(
             user_content=[{"type": "input_text", "text": "Верни JSON с полем code = 'print(1)'"}],
             guided_json={
-                "type": "object",
-                "properties": {"code": {"type": "string"}},
-                "required": ["code"],
-                "additionalProperties": False,
+                "name": "code_example",
+                "strict": True,
+                "schema": {
+                    "type": "object",
+                    "properties": {"code": {"type": "string"}},
+                    "required": ["code"],
+                    "additionalProperties": False,
+                },
             }
         )
         print(result)
 
-    asyncio.run(_main())
+    asyncio.run(main())
