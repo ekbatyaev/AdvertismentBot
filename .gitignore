@@ -4,7 +4,7 @@ __pycache__/
 *.pyc
 .venv/
 venv/
-old_code/
+scripts/
 logs/
 .idea/
 .DS_Store
