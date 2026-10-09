@@ -1,31 +1,26 @@
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from maxapi.types import CallbackButton
+from maxapi.utils.inline_keyboard import InlineKeyboardBuilder
 
 # Клавиатуры бота
 def option_user_choice():
-    keyboard_list = [
-        [InlineKeyboardButton(text='Проверить сообщение 💬', callback_data='message_check')],
-        [InlineKeyboardButton(text='Проверить канал 🗂', callback_data='channel_check')]
-    ]
-    keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_list)
-    return keyboard
+    keyboard_builder = InlineKeyboardBuilder()
+    keyboard_builder.row(CallbackButton(text = 'Проверить сообщение 💬', payload = 'message_check'))
+    keyboard_builder.row(CallbackButton(text = 'Проверить телеграмм канал 🗂', payload = 'channel_check'))
+    return keyboard_builder.as_markup()
 
 
 def option_user_go_back():
-    keyboard_list = [
-        [InlineKeyboardButton(text='Вернуться назад ↩️', callback_data='back')]
-    ]
-    keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_list)
-    return keyboard
+    keyboard_builder = InlineKeyboardBuilder()
+    keyboard_builder.row(CallbackButton(text='Вернуться назад ↩️', payload='back'))
+    return keyboard_builder.as_markup()
 
 
 def option_user_choose_time_interval():
-    keyboard_list = [
-        [InlineKeyboardButton(text='Все посты в канале 📂', callback_data='all_posts')],
-        [InlineKeyboardButton(text='Указать период вручную 📅', callback_data='interval')],
-        [InlineKeyboardButton(text='За последние 7 дней 🗓', callback_data='week')],
-        [InlineKeyboardButton(text='За последний месяц 🗓', callback_data='month')],
-        [InlineKeyboardButton(text='За последний год 🗓', callback_data='year')],
-        [InlineKeyboardButton(text='Вернуться назад ↩️', callback_data='back')]
-    ]
-    keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_list)
-    return keyboard
+    keyboard_builder = InlineKeyboardBuilder()
+    keyboard_builder.row(CallbackButton(text='Все посты в канале 📂', payload = 'all_posts'))
+    keyboard_builder.row(CallbackButton(text='Указать период вручную 📅', payload = 'interval'))
+    keyboard_builder.row(CallbackButton(text='За последние 7 дней 🗓', payload = 'week'))
+    keyboard_builder.row(CallbackButton(text='За последний месяц 🗓', payload = 'month'))
+    keyboard_builder.row(CallbackButton(text='За последний год 🗓', payload = 'year'))
+    keyboard_builder.row(CallbackButton(text='Вернуться назад ↩️', payload = 'back'))
+    return keyboard_builder.as_markup()

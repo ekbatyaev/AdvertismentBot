@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     )
 
     telegram_bot_token: str = field(repr = False)
+    max_bot_token: str = field(repr = False)
+    webhook_secret: str = field(repr = False)
+    webhook_port: int
+    webhook_url: str = field(repr = False)
     yandex_cloud_model: str
     yandex_cloud_folder: str
     yandex_cloud_api_key: str = field(repr = False)

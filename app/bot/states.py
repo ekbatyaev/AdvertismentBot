@@ -1,4 +1,4 @@
-from aiogram.filters.state import State, StatesGroup
+from maxapi.context import State, StatesGroup
 
 # FSM состояние бота
 class NavigateStates(StatesGroup):

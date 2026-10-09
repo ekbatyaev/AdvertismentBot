@@ -1,8 +1,6 @@
 import asyncio, pandas as pd
 from io import BytesIO
-from aiogram.exceptions import TelegramNetworkError
 from datetime import datetime, timezone
-from aiogram.types import BufferedInputFile
 from openpyxl.workbook import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
@@ -11,20 +9,55 @@ from app.settings import logger
 from app.bot.config import bot
 from app.ai.functions.ad_analysis import analyze_text
 from app.parser.telegram_web_parser import parse_channel_web
-
+from maxapi.types import InputMedia, InputMediaBuffer
+from maxapi.exceptions.max import MaxApiError, MaxConnection, MaxUploadFileFailed
+from maxapi.enums.upload_type import UploadType
+from maxapi.enums.parse_mode import TextFormat
+from maxapi.context.base import BaseContext
+from maxapi.types import Message
+from aiohttp import ClientError
+from app.bot.states import NavigateStates
+from app.bot.keyboards import option_user_choice
 
 _PARSER_SEMAPHORE = asyncio.Semaphore(4)
 # Безопасная отправка документа
 
-async def safe_send_document(**kwargs):
+async def run_channel_analysis(message: Message, context: BaseContext,
+                               start_date, end_date, user_id: int, wait_text: str):
+    """Общий хвост: запуск анализа, вывод ошибок, возврат в меню."""
+    data = await context.get_data()
+    channel_name = data.get("channel_name")
+    await asyncio.sleep(0.5)
+    ai_answer = (await message.answer(wait_text, format=TextFormat.MARKDOWN)).message
+    task_result_description = await get_channel_analysis(channel_name[1:], start_date, end_date, user_id)
+    await ai_answer.delete()
+    await asyncio.sleep(0.5)
+    if not task_result_description.get("completion") and task_result_description.get("error") == "parsing":
+        await message.answer("Пожалуйста, проверь не ошибся ли ты в теге или измени временной промежуток постов.")
+    elif task_result_description.get("error") == "document_send":
+        await message.answer("Пожалуйста, попробуйте позже, ошибка при отправке документа")
+    last_message = await message.answer("Выбери дальнейшую опцию", attachments=[option_user_choice()])
+    await context.update_data(last_message_id=last_message.message.body.mid)
+    await context.set_state(NavigateStates.option_user_choice)
+
+async def edit_last_message(context: BaseContext, **kwargs):
+    """Редактирует сообщение, ID которого сохранён в FSM."""
+    data = await context.get_data()
+    mid = data.get("last_message_id")
+    if mid:
+        await bot.edit_message(message_id=mid, **kwargs)
+
+async def safe_send_document(document: InputMedia | InputMediaBuffer,
+                             **kwargs):
     for attempt in range(3):
         try:
             return await bot.send_document(
-                **kwargs,
-                request_timeout=30
+                attachments = [document],
+                **kwargs
             )
-        except TelegramNetworkError as tg:
-            logger.error(f"Ошибка: {tg}")
+        except (MaxConnection, MaxUploadFileFailed, MaxApiError,
+                ClientError, asyncio.TimeoutError) as e:
+            logger.error(f"Ошибка: {e}")
             if attempt == 2:
                 raise
             await asyncio.sleep(2)
@@ -239,17 +272,18 @@ async def get_channel_analysis(channel_name, start_time, end_time, user_id) -> d
     wb.save(excel_buffer)
     excel_buffer.seek(0)
 
-    excel_file = BufferedInputFile(
-        file=excel_buffer.read(),
-        filename=filename
+    excel_file = InputMediaBuffer(
+        buffer = excel_buffer.read(),
+        filename=filename,
+        type = UploadType.FILE
     )
 
     try:
         # Отправляем файл
         await safe_send_document(
-            chat_id=user_id,
+            user_id=user_id,
             document=excel_file,
-            caption=f"📊 Анализ постов канала {channel_name} ({datetime.now().strftime('%d.%m.%Y %H:%M')})"
+            text=f"📊 Анализ постов канала {channel_name} ({datetime.now().strftime('%d.%m.%Y %H:%M')})"
         )
         return {"completion": True}
     except Exception as e:
