@@ -22,6 +22,22 @@ from app.bot.keyboards import option_user_choice
 _PARSER_SEMAPHORE = asyncio.Semaphore(4)
 # Безопасная отправка документа
 
+async def send_welcome(event, chat_id: int, user, context: BaseContext):
+    username = user.username or user.first_name
+    welcome_message = await event.bot.send_message(
+        chat_id=chat_id,
+        text=(
+            f"Привет, **{username}**!\n\n"
+            "Я являются ботом компании **Systeme Electric**, созданным для проверки "
+            "сообщений на **наличие рекламы.**\n\nБуду рад помочь 🤝"
+        ),
+        attachments=[option_user_choice()],
+        format=TextFormat.MARKDOWN,
+    )
+    logger.info(f"Пользователь {user.user_id} начал беседу")
+    await context.update_data(last_message_id=welcome_message.message.body.mid)
+    await context.set_state(NavigateStates.option_user_choice)
+
 async def run_channel_analysis(message: Message, context: BaseContext,
                                start_date, end_date, user_id: int, wait_text: str):
     """Общий хвост: запуск анализа, вывод ошибок, возврат в меню."""
@@ -51,7 +67,7 @@ async def safe_send_document(document: InputMedia | InputMediaBuffer,
                              **kwargs):
     for attempt in range(3):
         try:
-            return await bot.send_document(
+            return await bot.send_message(
                 attachments = [document],
                 **kwargs
             )

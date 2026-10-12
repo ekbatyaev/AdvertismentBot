@@ -5,14 +5,14 @@ from maxapi.exceptions import MaxApiError
 from app.settings import settings, logger, MOSCOW_TZ
 from app.functions import load_data
 from app.bot.states import NavigateStates, AnalyzeStates
-from app.bot.functions import safe_send_document, validate_date_pair, edit_last_message, run_channel_analysis
+from app.bot.functions import safe_send_document, validate_date_pair, edit_last_message, run_channel_analysis, send_welcome
 from app.bot.keyboards import option_user_choice, option_user_go_back, option_user_choose_time_interval
 from app.ai.functions.ad_analysis import analyze_text
 from maxapi import Router, F
 from maxapi.context.base import BaseContext
 from maxapi.enums.parse_mode import TextFormat
 from maxapi.enums.upload_type import UploadType
-from maxapi.types import InputMedia, MessageCreated, MessageCallback
+from maxapi.types import InputMedia, MessageCreated, MessageCallback, BotStarted
 from maxapi.filters.command import CommandStart, Command
 
 # Инициализация путей использования бота
@@ -46,24 +46,25 @@ async def handle_admin_request(event:  MessageCreated, context: BaseContext):
                                 document = InputMedia(str(file_name), type = UploadType.FILE),
                                  text = f"📊 Статистика постов ({datetime.now().strftime('%d.%m.%Y %H:%M')})"
                                  )
+
+        await event.message.answer(
+            f"Для продолжения работы бота напишите: **/start**",
+            format=TextFormat.MARKDOWN)
     except Exception as e:
         logger.error(f"Ошибка: {e}")
         await asyncio.sleep(0.5)
         await event.message.answer("Отправить документ не удалось, попробуйте позже")
 
-# Начальный блок сообщений с выбором варианта использования бота
+# Нажатие кнопки «Начать» при первом запуске бота
+@user_router.bot_started()
+async def handle_bot_started(event: BotStarted, context: BaseContext):
+    await send_welcome(event, event.chat_id, event.user, context)
+
+
+# Команда /start, набранная вручную
 @user_router.message_created(CommandStart())
 async def handle_start_message(event: MessageCreated, context: BaseContext):
-    await asyncio.sleep(0.5)
-    sender = event.message.sender
-    username = sender.username or sender.first_name
-    welcome_message = await event.message.answer(
-        f"Привет, **{username}**!\n\nЯ являются ботом компании **Systeme Electric**, созданным для проверки сообщений на **наличие рекламы.**\n\nБуду рад помочь 🤝",
-        attachments=[option_user_choice()], format = TextFormat.MARKDOWN,
-    )
-    logger.info(f"Пользователь {sender.user_id} начал беседу")
-    await context.update_data(last_message_id = welcome_message.message.body.mid)
-    await context.set_state(NavigateStates.option_user_choice)
+    await send_welcome(event, event.message.recipient.chat_id, event.message.sender, context)
 
 
 @user_router.message_created(F.message.body.text, NavigateStates.option_user_choice)

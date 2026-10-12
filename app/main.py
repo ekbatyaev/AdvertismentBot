@@ -9,7 +9,7 @@ async def main():
 
     await bot.delete_webhook()  # убираем старые подписки
     await bot.subscribe_webhook(
-        url=f"{settings.webhook_url}{settings.webhook_path}",
+        url=settings.webhook_url,
         secret=settings.webhook_secret,
     )
 
@@ -17,7 +17,6 @@ async def main():
         bot=bot,
         host="0.0.0.0",
         port=settings.webhook_port,
-        path=settings.webhook_path,
         secret=settings.webhook_secret,
     )
 
