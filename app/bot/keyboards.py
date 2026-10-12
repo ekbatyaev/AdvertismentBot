@@ -5,7 +5,7 @@ from maxapi.utils.inline_keyboard import InlineKeyboardBuilder
 def option_user_choice():
     keyboard_builder = InlineKeyboardBuilder()
     keyboard_builder.row(CallbackButton(text = 'Проверить сообщение 💬', payload = 'message_check'))
-    keyboard_builder.row(CallbackButton(text = 'Проверить телеграмм канал 🗂', payload = 'channel_check'))
+    keyboard_builder.row(CallbackButton(text = 'Проверить канал в максе 🗂', payload='channel_check'))
     return keyboard_builder.as_markup()
 
 

@@ -5,7 +5,7 @@ class NavigateStates(StatesGroup):
     option_user_choice = State()
     get_time_choice = State()
     get_interval = State()
-    get_channel_name = State()
+    get_channel_url = State()
 
 
 class AnalyzeStates(StatesGroup):

@@ -5,15 +5,19 @@ from maxapi.exceptions import MaxApiError
 from app.settings import settings, logger, MOSCOW_TZ
 from app.functions import load_data
 from app.bot.states import NavigateStates, AnalyzeStates
-from app.bot.functions import safe_send_document, validate_date_pair, edit_last_message, run_channel_analysis, send_welcome
+from app.bot.functions import (safe_send_document, validate_date_pair, edit_last_message,
+                               run_channel_analysis, send_welcome, check_channel_by_url,
+                               check_bot_channel_permissions)
 from app.bot.keyboards import option_user_choice, option_user_go_back, option_user_choose_time_interval
 from app.ai.functions.ad_analysis import analyze_text
+from app.bot.schemas import BotPermissions, DateValidation
 from maxapi import Router, F
 from maxapi.context.base import BaseContext
 from maxapi.enums.parse_mode import TextFormat
 from maxapi.enums.upload_type import UploadType
 from maxapi.types import InputMedia, MessageCreated, MessageCallback, BotStarted
 from maxapi.filters.command import CommandStart, Command
+from maxapi.types.chats import Chat
 
 # Инициализация путей использования бота
 user_router = Router(router_id = "user")
@@ -44,7 +48,7 @@ async def handle_admin_request(event:  MessageCreated, context: BaseContext):
         await safe_send_document(
                                  chat_id = event.message.recipient.chat_id,
                                 document = InputMedia(str(file_name), type = UploadType.FILE),
-                                 text = f"📊 Статистика постов ({datetime.now().strftime('%d.%m.%Y %H:%M')})"
+                                 text = f"📊 Статистика постов ({datetime.now(MOSCOW_TZ).replace(tzinfo=None).strftime('%d.%m.%Y %H:%M')})"
                                  )
 
         await event.message.answer(
@@ -153,38 +157,56 @@ async def message_analyze(event: MessageCreated,
 async def option_channel_check(event: MessageCallback, context: BaseContext):
     await asyncio.sleep(0.5)
     logger.info(f"Пользователь {event.callback.user.user_id} запустил анализ канала")
-    await event.edit(text="Пришли мне **тег канала** в формате **@systemeelectric_official** 🔗",
-                                 attachments = [option_user_go_back()], format = TextFormat.MARKDOWN)
-    await context.set_state(NavigateStates.get_channel_name)
-
+    await event.edit(text="Пришли мне **ссылку на канал** в формате **https://max.ru/channel_systeme_electric** 🔗",
+                     attachments=[option_user_go_back()], format=TextFormat.MARKDOWN)
+    await context.set_state(NavigateStates.get_channel_url)
 
 @user_router.message_callback(F.callback.payload == 'back',
-                              NavigateStates.get_channel_name, NavigateStates.get_time_choice)
+                              NavigateStates.get_channel_url, NavigateStates.get_time_choice)
 async def back_to_previous(event: MessageCallback, context: BaseContext):
     await asyncio.sleep(0.5)
     await event.edit(text = "Выбери дальнейшую опцию", attachments = [option_user_choice()])
     await context.set_state(NavigateStates.option_user_choice)
 
-
-@user_router.message_created(F.message.body.text, NavigateStates.get_channel_name)
+@user_router.message_created(F.message.body.text, NavigateStates.get_channel_url)
 async def check_bot_rights(event: MessageCreated, context: BaseContext):
     await asyncio.sleep(0.5)
     text = event.message.body.text.strip()
     logger.info(text)
-    if "https://t.me/" in text:
-        text = text.replace("https://t.me/", "@")
-    if not text.startswith("@"):
+    if not text.startswith("https://max.ru/"):
         await asyncio.sleep(0.5)
-        await event.message.answer("Пожалуйста, пришли тег канала в формате **@systemeelectric_official** 🔗",
+        await event.message.answer("Пожалуйста, пришли мне **ссылку на канал** в формате **https://max.ru/channel_systeme_electric** 🔗",
                                 format = TextFormat.MARKDOWN)
-        logger.warning(f"Неправильное название канала: {text}")
+        logger.warning(f"Неправильная ссылка на канал: {text}")
         return
+
+    channel_info: Chat | None = await check_channel_by_url(text)
+
+    if channel_info is None:
+        await asyncio.sleep(0.5)
+        await event.message.answer(
+            "Я не смог найти **публичный канал** по ссылке. Проверьте **правильноcть написания ссылки** и сделали ли вы меня **администратором канала**.",
+            format=TextFormat.MARKDOWN)
+        logger.warning(f"Канал не найден или бот не добавлен в его администраторы: {text}")
+        return
+
+    check_bot_permissions: BotPermissions = await check_bot_channel_permissions(channel_info.chat_id)
+    if not check_bot_permissions.permission_to_read:
+        await asyncio.sleep(0.5)
+        await event.message.answer(
+            f"У бота нет возможности читать сообщения по причине:\n{check_bot_permissions.bot_channel_status}",
+            format=TextFormat.MARKDOWN)
+        logger.warning(f"Бот не имеет прав не чтение сообщений по причине:\n{check_bot_permissions.bot_channel_status}")
+        return
+
+
     await edit_last_message(context,
-                            text=f"Канал для проверки: {text}")
+                            text=f"Канал для анализа:\n{text}")
     await asyncio.sleep(0.5)
     last_message = await event.message.answer("Какой период постов нужно проверить?",
                                         attachments = [option_user_choose_time_interval()])
-    await context.update_data(channel_name = text,
+    await context.update_data(channel_name = channel_info.title or str(channel_info.chat_id),
+                              channel_chat_id = channel_info.chat_id,
                               last_message_id = last_message.message.body.mid)
     await context.set_state(NavigateStates.get_time_choice)
 
@@ -196,8 +218,9 @@ async def get_all_timestamp(event: MessageCallback, context: BaseContext):
         text=f"Ты выбрал анализ **всех постов** в канале. Он может занять **продолжительное время** ⏱️.",
         attachments=[], format = TextFormat.MARKDOWN)
 
-    await run_channel_analysis(event.message, context, None, None, event.callback.user.user_id,
-                         "*Искусственный интеллект обрабатывает ваш запрос...*")
+    await run_channel_analysis(message = event.message, context = context,
+                               chat_id = event.message.recipient.chat_id,
+                               start_date = None, end_date = None)
 
 
 @user_router.message_callback(F.callback.payload.in_({"week", "month", "year"}), NavigateStates.get_time_choice)
@@ -205,21 +228,23 @@ async def get_exact_timestamp(event: MessageCallback,
                               context: BaseContext):
     await asyncio.sleep(0.5)
     period = event.callback.payload
-    end_time = datetime.now()
+    end_time = datetime.now(MOSCOW_TZ).replace(tzinfo=None)
     dict_dates = {
         "week": {
-            "date": (end_time - timedelta(weeks=1)).strftime("%d.%m.%Y"),
+            "date": (end_time - timedelta(weeks=1)),
             "message": "Ты выбрал анализ постов за **последнюю неделю**."},
         "month": {
-            "date": (end_time - relativedelta(months=1)).strftime("%d.%m.%Y"),
+            "date": (end_time - relativedelta(months=1)),
             "message": "Ты выбрал анализ постов за **последний месяц**.\n\nОн может занять **продолжительное время** ⏱️."},
         "year": {
-            "date": (end_time - relativedelta(years=1)).strftime("%d.%m.%Y"),
+            "date": (end_time - relativedelta(years=1)),
             "message": "Ты выбрал анализ постов за **последний год**.\n\nОн может занять **продолжительное время** ⏱️."}
     }
     await event.edit(text=dict_dates[period]["message"], attachments=[], format=TextFormat.MARKDOWN)
-    await run_channel_analysis(event.message, context, dict_dates[period]["date"], end_time.strftime("%d.%m.%Y"),
-                               event.callback.user.user_id, "*Искусственный интеллект обрабатывает ваш запрос...*")
+
+    await run_channel_analysis(message=event.message, context=context,
+                               chat_id=event.message.recipient.chat_id,
+                               start_date=dict_dates[period]["date"], end_date=end_time)
 
 
 @user_router.message_callback(F.callback.payload == 'interval', NavigateStates.get_time_choice)
@@ -243,13 +268,16 @@ async def back_to_time_choice(event: MessageCallback, context: BaseContext):
 async def get_interval(event: MessageCreated, context: BaseContext):
     await asyncio.sleep(0.5)
     text = event.message.body.text
-    valid_dict = await validate_date_pair(text)
-    if not valid_dict.get("valid"):
-        await event.message.answer(valid_dict.get("message"))
+    validation_result: DateValidation = await validate_date_pair(text)
+    if not validation_result.validation_status:
+        await event.message.answer(f"Даты не прошли валидацию по причине:\n{validation_result.status_description}")
         return
     await asyncio.sleep(0.5)
     await edit_last_message(context, text=f"Твой выбранный промежуток: **{text}**",
                             format=TextFormat.MARKDOWN)
     dates = text.split()
-    await run_channel_analysis(event.message, context, dates[0], dates[1], event.message.sender.user_id,
-                               "*Искусственный интеллект обрабатывает ваш запрос, он может занять продолжительное время...*")
+
+    await run_channel_analysis(message=event.message, context=context,
+                               chat_id=event.message.recipient.chat_id,
+                               start_date=datetime.strptime(dates[0],"%Y.%m.%d"),
+                               end_date=datetime.strptime(dates[1],"%Y.%m.%d"))
