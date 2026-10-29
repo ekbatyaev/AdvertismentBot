@@ -36,13 +36,13 @@ async def check_bot_channel_permissions(chat_id: int) -> BotPermissions:
         return BotPermissions(permission_to_read=False,
                          bot_channel_status="Бот не добавлен в канал.")
     if not bot_info.is_admin:
-        return BotPermissions(permission_to_read = False,
-                         bot_channel_status = "Бот добавлен в канал, но не является администратором.")
+        return BotPermissions(permission_to_read=False,
+                         bot_channel_status="Бот добавлен в канал, но не является администратором.")
     if ChatPermission.READ_ALL_MESSAGES not in (bot_info.permissions or []):
-        return BotPermissions(permission_to_read = False,
-                         bot_channel_status = "Бот не имеет права «Читать все сообщения».")
-    return BotPermissions(permission_to_read = True,
-                     bot_channel_status = "Бот обладает всеми нужными правами.")
+        return BotPermissions(permission_to_read=False,
+                         bot_channel_status="Бот не имеет права «Читать все сообщения».")
+    return BotPermissions(permission_to_read=True,
+                     bot_channel_status="Бот обладает всеми нужными правами.")
 
 async def check_channel_by_url(link: str) -> Chat | None:
     """Ссылка/алиас -> Chat или None."""
@@ -156,7 +156,7 @@ async def safe_send_document(document: InputMedia | InputMediaBuffer,
     for attempt in range(3):
         try:
             return await bot.send_message(
-                attachments = [document],
+                attachments=[document],
                 **kwargs
             )
         except (MaxConnection, MaxUploadFileFailed, MaxApiError,
@@ -175,8 +175,8 @@ async def validate_date_pair(date_string: str) -> DateValidation:
 
     if not match:
         return DateValidation(
-            validation_status = False,
-            status_description = "Неверный формат. Нужно: день.месяц.год день.месяц.год"
+            validation_status=False,
+            status_description="Неверный формат. Нужно: день.месяц.год день.месяц.год"
         )
 
     d1, m1, y1, d2, m2, y2 = map(int, match.groups())
@@ -184,82 +184,92 @@ async def validate_date_pair(date_string: str) -> DateValidation:
 
     if not (1 <= m1 <= 12):
         return DateValidation(
-            validation_status = False,
-            status_description = f"Неверный месяц в первой дате: {m1:02d}. Месяц должен быть от 01 до 12."
+            validation_status=False,
+            status_description=f"Неверный месяц в первой дате: {
+    m1:02d}. Месяц должен быть от 01 до 12."
         )
 
     try:
         date1 = datetime(y1, m1, d1)
     except ValueError:
         if d1 < 1 or d1 > 31:
-            msg = f"Неверный день в первой дате: {d1:02d}. День должен быть от 01 до 31."
+            msg = f"Неверный день в первой дате: {
+    d1:02d}. День должен быть от 01 до 31."
         elif m1 == 2 and d1 > 29:
-            msg = f"В феврале не может быть {d1:02d} дня. Проверьте високосный год."
+            msg = f"В феврале не может быть {
+    d1:02d} дня. Проверьте високосный год."
         elif m1 in [4, 6, 9, 11] and d1 > 30:
             msg = f"В {m1:02d}-м месяце только 30 дней."
         else:
             msg = f"Некорректная первая дата: {d1:02d}.{m1:02d}.{y1:04d}"
 
         return DateValidation(
-            validation_status = False,
-            status_description = msg
+            validation_status=False,
+            status_description=msg
         )
 
     if date1 > current_date:
         return DateValidation(
-            validation_status = False,
-            status_description = f"Первая дата ({date1.strftime('%d.%m.%Y')}) ещё не наступила!"
+            validation_status=False,
+            status_description=f"Первая дата ({
+    date1.strftime('%d.%m.%Y')}) ещё не наступила!"
         )
 
     if not (1 <= m2 <= 12):
         return DateValidation(
-            validation_status =  False,
-            status_description = f"Неверный месяц во второй дате: {m2:02d}. Месяц должен быть от 01 до 12."
+            validation_status=False,
+            status_description=f"Неверный месяц во второй дате: {
+    m2:02d}. Месяц должен быть от 01 до 12."
         )
 
     try:
         date2 = datetime(y2, m2, d2)
     except ValueError:
         if d2 < 1 or d2 > 31:
-            msg = f"Неверный день во второй дате: {d2:02d}. День должен быть от 01 до 31."
+            msg = f"Неверный день во второй дате: {
+    d2:02d}. День должен быть от 01 до 31."
         elif m2 == 2 and d2 > 29:
-            msg = f"В феврале не может быть {d2:02d} дня. Проверьте високосный год."
+            msg = f"В феврале не может быть {
+    d2:02d} дня. Проверьте високосный год."
         elif m2 in [4, 6, 9, 11] and d2 > 30:
             msg = f"В {m2:02d}-м месяце только 30 дней."
         else:
             msg = f"Некорректная вторая дата: {d2:02d}.{m2:02d}.{y2:04d}"
 
         return DateValidation(
-            validation_status = False,
-            status_description =  msg
+            validation_status=False,
+            status_description=msg
         )
 
     if date2 > current_date:
         return DateValidation(
-            validation_status = False,
-            status_description = f"Вторая дата ({date2.strftime('%d.%m.%Y')}) ещё не наступила!"
+            validation_status=False,
+            status_description=f"Вторая дата ({
+    date2.strftime('%d.%m.%Y')}) ещё не наступила!"
         )
 
     if date2 < date1:
         return DateValidation(
-            validation_status = False,
-            status_description = (
+            validation_status=False,
+            status_description=(
                 f"Вторая дата ({date2.strftime('%d.%m.%Y')}) "
                 f"раньше первой ({date1.strftime('%d.%m.%Y')})!"
             )
         )
 
     return DateValidation(
-        validation_status = True,
-        status_description = "Даты прошли валидацию."
+        validation_status=True,
+        status_description="Даты прошли валидацию."
     )
 
 
-async def send_analysis(messages: list[Message], channel_name: str, chat_id: int) -> SendAnalysis:
+async def send_analysis(
+    messages: list[Message], channel_name: str, chat_id: int) -> SendAnalysis:
 
     if not messages:
         logger.warning("Сообщений за указанный период анализа канала нет.")
-        return SendAnalysis(analysis_sent_status = False, status_description = "Сообщений за указанный период не найдено")
+        return SendAnalysis(analysis_sent_status=False,
+                            status_description="Сообщений за указанный период не найдено")
 
     datum = []
 
@@ -269,7 +279,7 @@ async def send_analysis(messages: list[Message], channel_name: str, chat_id: int
         if not post_text:
             continue
 
-        answer_list = await analyze_text(text = post_text, temperature = 0.4)
+        answer_list = await analyze_text(text=post_text, temperature=0.4)
 
         if answer_list:
             violations_flag = any(answer["fine"] > 0 for answer in answer_list)
@@ -282,12 +292,16 @@ async def send_analysis(messages: list[Message], channel_name: str, chat_id: int
         recommendations = ""
 
         if violations_flag:
-            answer_list = sorted(answer_list, key=lambda answer: answer["fine"], reverse=True)
+            answer_list = sorted(
+    answer_list,
+    key=lambda answer: answer["fine"],
+     reverse=True)
 
         for i, answer in enumerate(answer_list):
             descriptions += f"{str(i + 1)}) Описание:\n" + answer[
                 "description"] + "\n\nВозможный штраф: " + str(answer["fine"]) + "\n\n"
-            recommendations += f"{str(i + 1)}) Рекомендация:\n" + answer["recommendation"] + "\n\n"
+            recommendations += f"{str(i + 1)}) Рекомендация:\n" + \
+                                      answer["recommendation"] + "\n\n"
 
         cell = {
             "Текст публикации": post_text,
@@ -310,7 +324,10 @@ async def send_analysis(messages: list[Message], channel_name: str, chat_id: int
 
     # Настройки стилей
     header_font = Font(name='Arial', size=11, bold=True, color="FFFFFF")
-    header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+    header_fill = PatternFill(
+    start_color="366092",
+    end_color="366092",
+     fill_type="solid")
     thin_border = Border(
         left=Side(style='thin'),
         right=Side(style='thin'),
@@ -373,21 +390,24 @@ async def send_analysis(messages: list[Message], channel_name: str, chat_id: int
     excel_buffer.seek(0)
 
     excel_file = InputMediaBuffer(
-        buffer = excel_buffer.read(),
+        buffer=excel_buffer.read(),
         filename=filename,
-        type = UploadType.FILE
+        type=UploadType.FILE
     )
 
     try:
         # Отправляем файл
         await safe_send_document(
-            chat_id = chat_id,
+            chat_id=chat_id,
             document=excel_file,
-            text=f"📊 Анализ постов канала {channel_name} ({datetime.now().strftime('%d.%m.%Y %H:%M')})"
+            text=f"📊 Анализ постов канала {channel_name} ({
+    datetime.now().strftime('%d.%m.%Y %H:%M')})"
         )
-        return SendAnalysis(analysis_sent_status = True, status_description = "Анализ успешно отправлен.")
+        return SendAnalysis(analysis_sent_status=True,
+                            status_description="Анализ успешно отправлен.")
     except Exception as e:
         logger.error(f"Ошибка отправки файла: {e}")
-        return SendAnalysis(analysis_sent_status = False, status_description = "Ошибка отправки документа с анализом")
+        return SendAnalysis(analysis_sent_status=False,
+                            status_description="Ошибка отправки документа с анализом")
     finally:
         logger.info(f"Обработано {len(datum)} из {len(messages)} постов")

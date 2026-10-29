@@ -24,7 +24,9 @@ class LLMBadResponseError(LLMClientError):
     """Запрос завершился со статусом failed/incomplete (например, модель не найдена)."""
 
 
-_CODE_FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE | re.MULTILINE)
+_CODE_FENCE_RE = re.compile(
+    r"^```(?:json)?\s*|\s*```$",
+     re.IGNORECASE | re.MULTILINE)
 
 
 def _extract_json(content: str) -> Any:
@@ -44,7 +46,7 @@ def _extract_json(content: str) -> Any:
     start = cleaned.find("{")
     end = cleaned.rfind("}")
     if start != -1 and end != -1 and end > start:
-        candidate = cleaned[start : end + 1]
+        candidate = cleaned[start: end + 1]
         try:
             return json.loads(candidate)
         except json.JSONDecodeError as e:
@@ -52,7 +54,9 @@ def _extract_json(content: str) -> Any:
                 f"Не удалось распарсить content как JSON: {content!r}"
             ) from e
 
-    raise LLMResponseParseError(f"Не удалось распарсить content как JSON: {content!r}")
+    raise LLMResponseParseError(
+    f"Не удалось распарсить content как JSON: {
+        content!r}")
 
 
 @dataclass
@@ -154,24 +158,29 @@ class LLMClient:
                                 "content": user_content,
                             }
                         ],
-                        text = text_format,
+                        text=text_format,
                         stream=False
                     )
 
                     if response.status != "completed":
                         error = response.error.message if response.error else response.incomplete_details
-                        raise LLMBadResponseError(f"Модель вернула status={response.status}: {error}")
+                        raise LLMBadResponseError(
+    f"Модель вернула status={
+        response.status}: {error}")
 
                     raw_output = response.output_text or ""
 
                     result = _extract_json(raw_output)
-                    return AiClientSendRequestResponse(result = result,
-                                                       input_tokens = response.usage.input_tokens,
-                                                       output_tokens = response.usage.output_tokens)
+                    return AiClientSendRequestResponse(result=result,
+                                                       input_tokens=response.usage.input_tokens,
+                                                       output_tokens=response.usage.output_tokens)
 
                 except APITimeoutError as e:
                     last_error = e
-                    logger.warning("Таймаут на попытке {}/{}", attempt, self.max_retries)
+                    logger.warning(
+    "Таймаут на попытке {}/{}",
+    attempt,
+     self.max_retries)
 
                 except (APIConnectionError, OpenAIError) as e:
                     last_error = e
@@ -199,7 +208,8 @@ if __name__ == "__main__":
 
     async def main() -> None:
         result = await client.send_request(
-            user_content=[{"type": "input_text", "text": "Верни JSON с полем code = 'print(1)'"}],
+            user_content=[{"type": "input_text",
+     "text": "Верни JSON с полем code = 'print(1)'"}],
             guided_json={
                 "name": "code_example",
                 "strict": True,

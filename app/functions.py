@@ -19,7 +19,9 @@ async def load_data(data_file):
 async def save_data(data_file, data):
     """Атомарно сохраняет JSON: файл либо старый целиком, либо новый целиком."""
     data_file = Path(data_file)
-    fd, tmp_path = tempfile.mkstemp(dir=data_file.parent, prefix=f".{data_file.name}.", suffix=".tmp")
+    fd, tmp_path = tempfile.mkstemp(
+    dir=data_file.parent, prefix=f".{
+        data_file.name}.", suffix=".tmp")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as file:
             json.dump(data, file, ensure_ascii=False, indent=4)

@@ -29,15 +29,15 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    telegram_bot_token: str = field(repr = False)
-    max_bot_token: str = field(repr = False)
-    webhook_secret: str = field(repr = False)
+    telegram_bot_token: str = field(repr=False)
+    max_bot_token: str = field(repr=False)
+    webhook_secret: str = field(repr=False)
     webhook_port: int
-    webhook_url: str = field(repr = False)
+    webhook_url: str = field(repr=False)
     webhook_path: str = "/max-webhook"
     yandex_cloud_model: str
     yandex_cloud_folder: str
-    yandex_cloud_api_key: str = field(repr = False)
+    yandex_cloud_api_key: str = field(repr=False)
     vector_store_id: str
 
     yandex_cloud_llm_url: str

@@ -71,14 +71,21 @@ async def _save_analysis_log(text: str, answers: list[dict], input_tokens: int, 
                              response_time_ms: float, error: str | None) -> None:
     """Пишет результат анализа в месячный JSON-лог. Никогда не бросает исключений."""
     try:
-        violations_flag = any(answer["violations"] == "Да" for answer in answers)
-        sorted_answers = sorted(answers, key=lambda answer: answer["fine"], reverse=True)
+        violations_flag = any(
+    answer["violations"] == "Да" for answer in answers)
+        sorted_answers = sorted(
+    answers,
+    key=lambda answer: answer["fine"],
+     reverse=True)
 
         descriptions = ""
         recommendations = ""
         for i, answer in enumerate(sorted_answers, start=1):
-            descriptions += f"{i}) Описание:\n{answer['description']}\n\nВозможный штраф: {answer['fine']}\n\n"
-            recommendations += f"{i}) Рекомендация:\n{answer['recommendation']}\n\n"
+            descriptions += f"{i}) Описание:\n{
+    answer['description']}\n\nВозможный штраф: {
+        answer['fine']}\n\n"
+            recommendations += f"{i}) Рекомендация:\n{
+    answer['recommendation']}\n\n"
 
         cell = {
             "Текст публикации": text,
@@ -94,7 +101,8 @@ async def _save_analysis_log(text: str, answers: list[dict], input_tokens: int, 
         now = datetime.datetime.now(MOSCOW_TZ).replace(tzinfo=None)
         logs_dir = Path(settings.ai_logs_dir)
         logs_dir.mkdir(parents=True, exist_ok=True)
-        file_name = logs_dir / f"{now.strftime('%B').lower()}_logs_{now.year}.json"
+        file_name = logs_dir / \
+            f"{now.strftime('%B').lower()}_logs_{now.year}.json"
 
         try:
             data = await load_data(file_name)
@@ -102,7 +110,9 @@ async def _save_analysis_log(text: str, answers: list[dict], input_tokens: int, 
         except json.JSONDecodeError:
             backup = file_name.with_suffix(f".broken-{now:%Y%m%d%H%M%S}.json")
             file_name.rename(backup)
-            logger.error("Файл логов повреждён, сохранён как {}, начинаю новый", backup)
+            logger.error(
+    "Файл логов повреждён, сохранён как {}, начинаю новый",
+     backup)
             data = []
 
         if not isinstance(data, list):
@@ -144,12 +154,16 @@ async def vector_database_law_search(text: str) -> str:
     try:
         chunks = await client.search_vector_store(query=text, max_num_results=8)
     except Exception as e:
-        logger.warning("Поиск по базе знаний не удался, анализ без контекста: {}", e)
+        logger.warning(
+    "Поиск по базе знаний не удался, анализ без контекста: {}", e)
         return ""
 
     logger.info("Найдено выдержек в базе знаний: {}", len(chunks))
     return "\n\n".join(
-        f"[Выдержка {i}] (источник: {chunk['filename']}, релевантность: {chunk['score'] or 0:.2f})\n{chunk['text']}"
+        f"[Выдержка {i}] (источник: {
+    chunk['filename']}, релевантность: {
+        chunk['score'] or 0:.2f})\n{
+            chunk['text']}"
         for i, chunk in enumerate(chunks, start=1)
     )
 
@@ -171,7 +185,8 @@ async def analyze_text(text: str, temperature: float = None) -> list[dict]:
             {
                 "type": "input_text",
                 "text": (
-                    f"Выдержки из базы знаний:\n\n{knowledge_context or 'Ничего не найдено.'}\n\n"
+                    f"Выдержки из базы знаний:\n\n{
+    knowledge_context or 'Ничего не найдено.'}\n\n"
                     "---\n\n"
                     "Проанализируй рекламное утверждение: "
                     f"«{text}» "
@@ -191,7 +206,8 @@ async def analyze_text(text: str, temperature: float = None) -> list[dict]:
         output_tokens = request_result.output_tokens or 0
 
         if not answers:
-            error = f"Модель вернула пустой или некорректный analysis: {request_result.result!r}"
+            error = f"Модель вернула пустой или некорректный analysis: {
+    request_result.result!r}"
             logger.error(error)
 
     except Exception as e:
@@ -207,7 +223,7 @@ async def analyze_text(text: str, temperature: float = None) -> list[dict]:
 if __name__ == "__main__":
     async def main():
 
-        single = await analyze_text(text = "Наши конкуренты полное говно",
+        single = await analyze_text(text="Наши конкуренты полное говно",
                                     temperature=0.0)
         print(single)
     asyncio.run(main())

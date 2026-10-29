@@ -20,10 +20,10 @@ from maxapi.filters.command import CommandStart, Command
 from maxapi.types.chats import Chat
 
 # Инициализация путей использования бота
-user_router = Router(router_id = "user")
+user_router = Router(router_id="user")
 
 @user_router.message_created(Command("secret_admin_statistics_request"))
-async def handle_admin_request(event:  MessageCreated, context: BaseContext):
+async def handle_admin_request(event: MessageCreated, context: BaseContext):
     await asyncio.sleep(0.5)
     now = datetime.now(MOSCOW_TZ).replace(tzinfo=None)
     month = now.strftime("%B").lower()
@@ -40,15 +40,20 @@ async def handle_admin_request(event:  MessageCreated, context: BaseContext):
     await event.message.answer(
         f"📊 *Cтатистика за последний календарный месяц*" + "\n\n" +
         f"Количество запросов к модели: **{len(data)}**\n" + f"Среднее количество входящих токенов: **{summ_input_tokens // len(data)}**\n" +
-        f"Среднее количество исходящих токенов: **{summ_output_tokens // len(data)}**\n" + f"Среднее время ответа (мс): **{summ_mc_time // len(data)}**\n",
-        format = TextFormat.MARKDOWN
+        f"Среднее количество исходящих токенов: **{
+    summ_output_tokens // len(data)}**\n" + f"Среднее время ответа (мс): **{
+        summ_mc_time // len(data)}**\n",
+        format=TextFormat.MARKDOWN
     )
     try:
         # Отправляем файл
         await safe_send_document(
-                                 chat_id = event.message.recipient.chat_id,
-                                document = InputMedia(str(file_name), type = UploadType.FILE),
-                                 text = f"📊 Статистика постов ({datetime.now(MOSCOW_TZ).replace(tzinfo=None).strftime('%d.%m.%Y %H:%M')})"
+                                 chat_id=event.message.recipient.chat_id,
+                                document=InputMedia(
+    str(file_name), type=UploadType.FILE),
+                                 text=f"📊 Статистика постов ({
+    datetime.now(MOSCOW_TZ).replace(
+        tzinfo=None).strftime('%d.%m.%Y %H:%M')})"
                                  )
 
         await event.message.answer(
@@ -71,8 +76,10 @@ async def handle_start_message(event: MessageCreated, context: BaseContext):
     await send_welcome(event, event.message.recipient.chat_id, event.message.sender, context)
 
 
-@user_router.message_created(F.message.body.text, NavigateStates.option_user_choice)
-async def attention_message_to_user(event: MessageCreated, context: BaseContext):
+@user_router.message_created(F.message.body.text,
+                             NavigateStates.option_user_choice)
+async def attention_message_to_user(
+    event: MessageCreated, context: BaseContext):
     await asyncio.sleep(0.5)
     await event.message.answer("Пожалуйста, выбери одну из опций выше.")
 
@@ -81,36 +88,40 @@ async def attention_message_to_user(event: MessageCreated, context: BaseContext)
                               NavigateStates.option_user_choice)
 async def option_message_check(event: MessageCallback, context: BaseContext):
     await asyncio.sleep(0.5)
-    logger.info(f"Пользователь {event.callback.user.user_id} запустил анализ сообщения")
+    logger.info(
+    f"Пользователь {
+        event.callback.user.user_id} запустил анализ сообщения")
     await event.edit(text="Пришли мне **текст сообщения** 📝",
                                     attachments=[option_user_go_back()], format=TextFormat.MARKDOWN)
     await context.set_state(AnalyzeStates.message_analyze)
 
 
-@user_router.message_callback(F.callback.payload == 'back', AnalyzeStates.message_analyze)
+@user_router.message_callback(F.callback.payload ==
+                              'back', AnalyzeStates.message_analyze)
 async def back_to_previous(event: MessageCallback, context: BaseContext):
     await asyncio.sleep(0.5)
     user = event.callback.user
     username = user.username or user.first_name
     await event.edit(
         text=f"Привет, **{username}**!\n\nЯ являются ботом компании **Systeme Electric**, созданным для проверки сообщений на **наличие рекламы.**\n\nБуду рад помочь 🤝",
-        attachments=[option_user_choice()], format = TextFormat.MARKDOWN)
+        attachments=[option_user_choice()], format=TextFormat.MARKDOWN)
     await context.set_state(NavigateStates.option_user_choice)
 
 
-@user_router.message_created(F.message.body.text, AnalyzeStates.message_analyze)
+@user_router.message_created(F.message.body.text,
+                             AnalyzeStates.message_analyze)
 async def message_analyze(event: MessageCreated,
                           context: BaseContext):
     text = event.message.body.text
     await edit_last_message(context, text="Пришли мне **текст сообщения** 📝",
-                                 format = TextFormat.MARKDOWN)
+                                 format=TextFormat.MARKDOWN)
     await asyncio.sleep(0.5)
 
     ai_answer = (await event.message.answer(
         "*Искусственный интеллект обрабатывает ваш запрос..*",
-        format = TextFormat.MARKDOWN)).message
+        format=TextFormat.MARKDOWN)).message
 
-    answer_list = await analyze_text(text = text, temperature = 0.4)
+    answer_list = await analyze_text(text=text, temperature=0.4)
     logger.info(text)
     if not answer_list:
         await ai_answer.edit(text="Пожалуйста, попробуйте позже.")
@@ -120,7 +131,10 @@ async def message_analyze(event: MessageCreated,
     violations_flag = any(answer["fine"] > 0 for answer in answer_list)
 
     if violations_flag:
-        answer_list = sorted(answer_list, key=lambda answer: answer["fine"], reverse=True)
+        answer_list = sorted(
+    answer_list,
+    key=lambda answer: answer["fine"],
+     reverse=True)
 
     descriptions = ""
     for i, answer in enumerate(answer_list):
@@ -131,7 +145,7 @@ async def message_analyze(event: MessageCreated,
 
     try:
         final_answer_to_user = f"**Результаты анализа 🔍**\n\n**Нарушения:** {violation_status}\n\n{descriptions}"
-        await ai_answer.edit(text=final_answer_to_user, format = TextFormat.MARKDOWN)
+        await ai_answer.edit(text=final_answer_to_user, format=TextFormat.MARKDOWN)
 
     except (MaxApiError, ValueError) as e:
         logger.error(f"Ошибка: {e}")
@@ -147,8 +161,8 @@ async def message_analyze(event: MessageCreated,
     logger.info(final_answer_to_user)
     await asyncio.sleep(0.5)
     last_message = await event.message.answer("Выбери дальнейшую опцию",
-                                              attachments = [option_user_choice()])
-    await context.update_data(last_message_id = last_message.message.body.mid)
+                                              attachments=[option_user_choice()])
+    await context.update_data(last_message_id=last_message.message.body.mid)
     await context.set_state(NavigateStates.option_user_choice)
 
 
@@ -156,7 +170,9 @@ async def message_analyze(event: MessageCreated,
                               NavigateStates.option_user_choice)
 async def option_channel_check(event: MessageCallback, context: BaseContext):
     await asyncio.sleep(0.5)
-    logger.info(f"Пользователь {event.callback.user.user_id} запустил анализ канала")
+    logger.info(
+    f"Пользователь {
+        event.callback.user.user_id} запустил анализ канала")
     await event.edit(text="Пришли мне **ссылку на канал** в формате **https://max.ru/channel_systeme_electric** 🔗",
                      attachments=[option_user_go_back()], format=TextFormat.MARKDOWN)
     await context.set_state(NavigateStates.get_channel_url)
@@ -165,10 +181,11 @@ async def option_channel_check(event: MessageCallback, context: BaseContext):
                               NavigateStates.get_channel_url, NavigateStates.get_time_choice)
 async def back_to_previous(event: MessageCallback, context: BaseContext):
     await asyncio.sleep(0.5)
-    await event.edit(text = "Выбери дальнейшую опцию", attachments = [option_user_choice()])
+    await event.edit(text="Выбери дальнейшую опцию", attachments=[option_user_choice()])
     await context.set_state(NavigateStates.option_user_choice)
 
-@user_router.message_created(F.message.body.text, NavigateStates.get_channel_url)
+@user_router.message_created(F.message.body.text,
+                             NavigateStates.get_channel_url)
 async def check_bot_rights(event: MessageCreated, context: BaseContext):
     await asyncio.sleep(0.5)
     text = event.message.body.text.strip()
@@ -176,7 +193,7 @@ async def check_bot_rights(event: MessageCreated, context: BaseContext):
     if not text.startswith("https://max.ru/"):
         await asyncio.sleep(0.5)
         await event.message.answer("Пожалуйста, пришли мне **ссылку на канал** в формате **https://max.ru/channel_systeme_electric** 🔗",
-                                format = TextFormat.MARKDOWN)
+                                format=TextFormat.MARKDOWN)
         logger.warning(f"Неправильная ссылка на канал: {text}")
         return
 
@@ -187,16 +204,20 @@ async def check_bot_rights(event: MessageCreated, context: BaseContext):
         await event.message.answer(
             "Я не смог найти **публичный канал** по ссылке. Проверьте **правильноcть написания ссылки** и сделали ли вы меня **администратором канала**.",
             format=TextFormat.MARKDOWN)
-        logger.warning(f"Канал не найден или бот не добавлен в его администраторы: {text}")
+        logger.warning(
+    f"Канал не найден или бот не добавлен в его администраторы: {text}")
         return
 
     check_bot_permissions: BotPermissions = await check_bot_channel_permissions(channel_info.chat_id)
     if not check_bot_permissions.permission_to_read:
         await asyncio.sleep(0.5)
         await event.message.answer(
-            f"У бота нет возможности читать сообщения по причине:\n{check_bot_permissions.bot_channel_status}",
+            f"У бота нет возможности читать сообщения по причине:\n{
+    check_bot_permissions.bot_channel_status}",
             format=TextFormat.MARKDOWN)
-        logger.warning(f"Бот не имеет прав не чтение сообщений по причине:\n{check_bot_permissions.bot_channel_status}")
+        logger.warning(
+    f"Бот не имеет прав не чтение сообщений по причине:\n{
+        check_bot_permissions.bot_channel_status}")
         return
 
 
@@ -204,10 +225,10 @@ async def check_bot_rights(event: MessageCreated, context: BaseContext):
                             text=f"Канал для анализа:\n{text}")
     await asyncio.sleep(0.5)
     last_message = await event.message.answer("Какой период постов нужно проверить?",
-                                        attachments = [option_user_choose_time_interval()])
-    await context.update_data(channel_name = channel_info.title or str(channel_info.chat_id),
-                              channel_chat_id = channel_info.chat_id,
-                              last_message_id = last_message.message.body.mid)
+                                        attachments=[option_user_choose_time_interval()])
+    await context.update_data(channel_name=channel_info.title or str(channel_info.chat_id),
+                              channel_chat_id=channel_info.chat_id,
+                              last_message_id=last_message.message.body.mid)
     await context.set_state(NavigateStates.get_time_choice)
 
 @user_router.message_callback(F.callback.payload == 'all_posts',
@@ -216,14 +237,15 @@ async def get_all_timestamp(event: MessageCallback, context: BaseContext):
     await asyncio.sleep(0.5)
     await event.edit(
         text=f"Ты выбрал анализ **всех постов** в канале. Он может занять **продолжительное время** ⏱️.",
-        attachments=[], format = TextFormat.MARKDOWN)
+        attachments=[], format=TextFormat.MARKDOWN)
 
-    await run_channel_analysis(message = event.message, context = context,
-                               chat_id = event.message.recipient.chat_id,
-                               start_date = None, end_date = None)
+    await run_channel_analysis(message=event.message, context=context,
+                               chat_id=event.message.recipient.chat_id,
+                               start_date=None, end_date=None)
 
 
-@user_router.message_callback(F.callback.payload.in_({"week", "month", "year"}), NavigateStates.get_time_choice)
+@user_router.message_callback(F.callback.payload.in_(
+    {"week", "month", "year"}), NavigateStates.get_time_choice)
 async def get_exact_timestamp(event: MessageCallback,
                               context: BaseContext):
     await asyncio.sleep(0.5)
@@ -247,8 +269,10 @@ async def get_exact_timestamp(event: MessageCallback,
                                start_date=dict_dates[period]["date"], end_date=end_time)
 
 
-@user_router.message_callback(F.callback.payload == 'interval', NavigateStates.get_time_choice)
-async def get_timestamps_interval(event: MessageCallback, context: BaseContext):
+@user_router.message_callback(F.callback.payload ==
+                              'interval', NavigateStates.get_time_choice)
+async def get_timestamps_interval(
+    event: MessageCallback, context: BaseContext):
     await asyncio.sleep(0.5)
     await event.edit(
         text="Ты выбрал анализ постов **определенного временного промежутка**.\n\nПожалуйста, пришли мне **дату начала** и **дату конца интервала** в формате день.месяц.год .\n\n**Например:** 08.12.2025 26.12.2025",
@@ -256,7 +280,8 @@ async def get_timestamps_interval(event: MessageCallback, context: BaseContext):
     await context.set_state(NavigateStates.get_interval)
 
 
-@user_router.message_callback(F.callback.payload == 'back', NavigateStates.get_interval)
+@user_router.message_callback(F.callback.payload ==
+                              'back', NavigateStates.get_interval)
 async def back_to_time_choice(event: MessageCallback, context: BaseContext):
     await asyncio.sleep(0.5)
     await event.edit(text="Какой период постов нужно проверить?",
@@ -279,5 +304,6 @@ async def get_interval(event: MessageCreated, context: BaseContext):
 
     await run_channel_analysis(message=event.message, context=context,
                                chat_id=event.message.recipient.chat_id,
-                               start_date=datetime.strptime(dates[0],"%Y.%m.%d"),
-                               end_date=datetime.strptime(dates[1],"%Y.%m.%d"))
+                               start_date=datetime.strptime(
+                                   dates[0], "%Y.%m.%d"),
+                               end_date=datetime.strptime(dates[1], "%Y.%m.%d"))
