@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Optional
 from openai import AsyncOpenAI, APIConnectionError, APITimeoutError, OpenAIError, NOT_GIVEN
-from app.ai.models import AiClientSendRequestResponse
+from app.ai.schemas import AiClientSendRequestResponse
 from app.settings import settings, logger
 
 

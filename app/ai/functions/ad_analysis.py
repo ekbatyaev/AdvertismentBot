@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Final
 from app.ai.client import client
 from app.settings import settings, logger, MOSCOW_TZ
-from app.ai.models import AiClientSendRequestResponse
+from app.ai.schemas import AiClientSendRequestResponse
 from app.functions import load_data, save_data
 from typing import Any
 
