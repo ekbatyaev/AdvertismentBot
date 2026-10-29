@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     webhook_secret: str = field(repr = False)
     webhook_port: int
     webhook_url: str = field(repr = False)
+    webhook_path: str = "/max-webhook"
     yandex_cloud_model: str
     yandex_cloud_folder: str
     yandex_cloud_api_key: str = field(repr = False)
