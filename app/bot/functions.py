@@ -36,11 +36,13 @@ async def check_bot_channel_permissions(chat_id: int) -> BotPermissions:
         return BotPermissions(permission_to_read=False,
                          bot_channel_status="Бот не добавлен в канал.")
     if not bot_info.is_admin:
-        return BotPermissions(permission_to_read=False,
-                         bot_channel_status="Бот добавлен в канал, но не является администратором.")
+        return BotPermissions(
+    permission_to_read=False,
+     bot_channel_status="Бот добавлен в канал, но не является администратором.")
     if ChatPermission.READ_ALL_MESSAGES not in (bot_info.permissions or []):
-        return BotPermissions(permission_to_read=False,
-                         bot_channel_status="Бот не имеет права «Читать все сообщения».")
+        return BotPermissions(
+    permission_to_read=False,
+     bot_channel_status="Бот не имеет права «Читать все сообщения».")
     return BotPermissions(permission_to_read=True,
                      bot_channel_status="Бот обладает всеми нужными правами.")
 
@@ -128,18 +130,22 @@ async def run_channel_analysis(message: Message, context: BaseContext,
     channel_chat_id = data.get("channel_chat_id")
     channel_name = data.get("channel_name")
     await asyncio.sleep(0.5)
-    ai_answer = (await message.answer("*Искусственный интеллект обрабатывает ваш запрос, он может занять продолжительное время...*",
+    ai_answer = (await message.answer("*Искусственный интеллект обрабатывает ваш запрос, он может "
+                                      "занять продолжительное время...*",
                                       format=TextFormat.MARKDOWN)).message
     async with _PARSER_SEMAPHORE:
-        messages_to_analysis = await asyncio.to_thread(get_channel_messages, channel_chat_id, start_date, end_date)
+        messages_to_analysis = await asyncio.to_thread(get_channel_messages, channel_chat_id,
+                                                       start_date, end_date)
 
     async with _DOC_CREATION_SEMAPHORE:
-        analysis_result: SendAnalysis = await asyncio.to_thread(send_analysis, messages_to_analysis, channel_name, chat_id)
+        analysis_result: SendAnalysis = await asyncio.to_thread(send_analysis, messages_to_analysis, channel_name,
+                                                                chat_id)
 
     await ai_answer.delete()
     await asyncio.sleep(0.5)
     if not analysis_result.analysis_sent_status:
-        await message.answer(f"К сожалению, при проведения анализа произошла следующая ошибка:\n{analysis_result.status_description}")
+        await message.answer(f"К сожалению, при проведения анализа произошла следующая ошибка:"
+                             f"\n{analysis_result.status_description}")
     last_message = await message.answer("Выбери дальнейшую опцию", attachments=[option_user_choice()])
     await context.update_data(last_message_id=last_message.message.body.mid)
     await context.set_state(NavigateStates.option_user_choice)
@@ -175,9 +181,8 @@ async def validate_date_pair(date_string: str) -> DateValidation:
 
     if not match:
         return DateValidation(
-            validation_status=False,
-            status_description="Неверный формат. Нужно: день.месяц.год день.месяц.год"
-        )
+    validation_status=False,
+     status_description="Неверный формат. Нужно: день.месяц.год день.месяц.год")
 
     d1, m1, y1, d2, m2, y2 = map(int, match.groups())
     current_date = datetime.now(MOSCOW_TZ).replace(tzinfo=None)
@@ -268,8 +273,9 @@ async def send_analysis(
 
     if not messages:
         logger.warning("Сообщений за указанный период анализа канала нет.")
-        return SendAnalysis(analysis_sent_status=False,
-                            status_description="Сообщений за указанный период не найдено")
+        return SendAnalysis(
+    analysis_sent_status=False,
+     status_description="Сообщений за указанный период не найдено")
 
     datum = []
 
@@ -304,11 +310,10 @@ async def send_analysis(
                                       answer["recommendation"] + "\n\n"
 
         cell = {
-            "Текст публикации": post_text,
-            "Наличие нарушений": "Присутствуют 🚨" if violations_flag == True else "Отсутствуют ✅",
-            "Описание": descriptions,
-            "Рекомендации": recommendations
-        }
+    "Текст публикации": post_text,
+    "Наличие нарушений": "Присутствуют 🚨" if violations_flag == True else "Отсутствуют ✅",
+    "Описание": descriptions,
+     "Рекомендации": recommendations}
         datum.append(cell)
 
     df = pd.DataFrame(datum)
@@ -407,7 +412,8 @@ async def send_analysis(
                             status_description="Анализ успешно отправлен.")
     except Exception as e:
         logger.error(f"Ошибка отправки файла: {e}")
-        return SendAnalysis(analysis_sent_status=False,
-                            status_description="Ошибка отправки документа с анализом")
+        return SendAnalysis(
+    analysis_sent_status=False,
+     status_description="Ошибка отправки документа с анализом")
     finally:
         logger.info(f"Обработано {len(datum)} из {len(messages)} постов")

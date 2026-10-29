@@ -171,9 +171,10 @@ class LLMClient:
                     raw_output = response.output_text or ""
 
                     result = _extract_json(raw_output)
-                    return AiClientSendRequestResponse(result=result,
-                                                       input_tokens=response.usage.input_tokens,
-                                                       output_tokens=response.usage.output_tokens)
+                    return AiClientSendRequestResponse(
+    result=result,
+    input_tokens=response.usage.input_tokens,
+     output_tokens=response.usage.output_tokens)
 
                 except APITimeoutError as e:
                     last_error = e
@@ -185,8 +186,10 @@ class LLMClient:
                 except (APIConnectionError, OpenAIError) as e:
                     last_error = e
                     logger.warning(
-                        "Ошибка запроса на попытке {}/{}: {}", attempt, self.max_retries, e
-                    )
+    "Ошибка запроса на попытке {}/{}: {}",
+    attempt,
+    self.max_retries,
+     e)
 
                 except (LLMBadResponseError, LLMResponseParseError) as e:
                     last_error = e

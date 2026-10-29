@@ -5,9 +5,14 @@ from maxapi.exceptions import MaxApiError
 from app.settings import settings, logger, MOSCOW_TZ
 from app.functions import load_data
 from app.bot.states import NavigateStates, AnalyzeStates
-from app.bot.functions import (safe_send_document, validate_date_pair, edit_last_message,
-                               run_channel_analysis, send_welcome, check_channel_by_url,
-                               check_bot_channel_permissions)
+from app.bot.functions import (
+    safe_send_document,
+    validate_date_pair,
+    edit_last_message,
+    run_channel_analysis,
+    send_welcome,
+    check_channel_by_url,
+     check_bot_channel_permissions)
 from app.bot.keyboards import option_user_choice, option_user_go_back, option_user_choose_time_interval
 from app.ai.functions.ad_analysis import analyze_text
 from app.bot.schemas import BotPermissions, DateValidation
@@ -39,7 +44,8 @@ async def handle_admin_request(event: MessageCreated, context: BaseContext):
         summ_mc_time += cell["Время ответа в мс"]
     await event.message.answer(
         f"📊 *Cтатистика за последний календарный месяц*" + "\n\n" +
-        f"Количество запросов к модели: **{len(data)}**\n" + f"Среднее количество входящих токенов: **{summ_input_tokens // len(data)}**\n" +
+        f"Количество запросов к модели: **{len(data)}**\n" + f"Среднее количество входящих токенов: "
+                                                             f"**{summ_input_tokens // len(data)}**\n" +
         f"Среднее количество исходящих токенов: **{
     summ_output_tokens // len(data)}**\n" + f"Среднее время ответа (мс): **{
         summ_mc_time // len(data)}**\n",
@@ -103,7 +109,8 @@ async def back_to_previous(event: MessageCallback, context: BaseContext):
     user = event.callback.user
     username = user.username or user.first_name
     await event.edit(
-        text=f"Привет, **{username}**!\n\nЯ являются ботом компании **Systeme Electric**, созданным для проверки сообщений на **наличие рекламы.**\n\nБуду рад помочь 🤝",
+        text=f"Привет, **{username}**!\n\nЯ являются ботом компании **Systeme Electric**, "
+             f"созданным для проверки сообщений на **наличие рекламы.**\n\nБуду рад помочь 🤝",
         attachments=[option_user_choice()], format=TextFormat.MARKDOWN)
     await context.set_state(NavigateStates.option_user_choice)
 
@@ -178,7 +185,8 @@ async def option_channel_check(event: MessageCallback, context: BaseContext):
     await context.set_state(NavigateStates.get_channel_url)
 
 @user_router.message_callback(F.callback.payload == 'back',
-                              NavigateStates.get_channel_url, NavigateStates.get_time_choice)
+    NavigateStates.get_channel_url,
+     NavigateStates.get_time_choice)
 async def back_to_previous(event: MessageCallback, context: BaseContext):
     await asyncio.sleep(0.5)
     await event.edit(text="Выбери дальнейшую опцию", attachments=[option_user_choice()])
@@ -192,7 +200,8 @@ async def check_bot_rights(event: MessageCreated, context: BaseContext):
     logger.info(text)
     if not text.startswith("https://max.ru/"):
         await asyncio.sleep(0.5)
-        await event.message.answer("Пожалуйста, пришли мне **ссылку на канал** в формате **https://max.ru/channel_systeme_electric** 🔗",
+        await event.message.answer("Пожалуйста, пришли мне "
+                                   "**ссылку на канал** в формате **https://max.ru/channel_systeme_electric** 🔗",
                                 format=TextFormat.MARKDOWN)
         logger.warning(f"Неправильная ссылка на канал: {text}")
         return
@@ -202,7 +211,8 @@ async def check_bot_rights(event: MessageCreated, context: BaseContext):
     if channel_info is None:
         await asyncio.sleep(0.5)
         await event.message.answer(
-            "Я не смог найти **публичный канал** по ссылке. Проверьте **правильноcть написания ссылки** и сделали ли вы меня **администратором канала**.",
+            "Я не смог найти **публичный канал** по ссылке. Проверьте "
+            "**правильноcть написания ссылки** и сделали ли вы меня **администратором канала**.",
             format=TextFormat.MARKDOWN)
         logger.warning(
     f"Канал не найден или бот не добавлен в его администраторы: {text}")
@@ -257,10 +267,12 @@ async def get_exact_timestamp(event: MessageCallback,
             "message": "Ты выбрал анализ постов за **последнюю неделю**."},
         "month": {
             "date": (end_time - relativedelta(months=1)),
-            "message": "Ты выбрал анализ постов за **последний месяц**.\n\nОн может занять **продолжительное время** ⏱️."},
+            "message": "Ты выбрал анализ постов за **последний месяц**."
+                       "\n\nОн может занять **продолжительное время** ⏱️."},
         "year": {
             "date": (end_time - relativedelta(years=1)),
-            "message": "Ты выбрал анализ постов за **последний год**.\n\nОн может занять **продолжительное время** ⏱️."}
+            "message": "Ты выбрал анализ постов за **последний год**."
+                       "\n\nОн может занять **продолжительное время** ⏱️."}
     }
     await event.edit(text=dict_dates[period]["message"], attachments=[], format=TextFormat.MARKDOWN)
 
@@ -275,7 +287,9 @@ async def get_timestamps_interval(
     event: MessageCallback, context: BaseContext):
     await asyncio.sleep(0.5)
     await event.edit(
-        text="Ты выбрал анализ постов **определенного временного промежутка**.\n\nПожалуйста, пришли мне **дату начала** и **дату конца интервала** в формате день.месяц.год .\n\n**Например:** 08.12.2025 26.12.2025",
+        text="Ты выбрал анализ постов **определенного временного промежутка**."
+             "\n\nПожалуйста, пришли мне **дату начала** и **дату конца интервала** в формате день.месяц.год ."
+             "\n\n**Например:** 08.12.2025 26.12.2025",
         attachments=[option_user_go_back()], format=TextFormat.MARKDOWN)
     await context.set_state(NavigateStates.get_interval)
 
