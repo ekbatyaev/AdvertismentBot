@@ -70,47 +70,6 @@ class LLMClient:
     max_retries: int = 3
     system_prompt: str = ""
 
-    async def search_vector_store(
-        self,
-        query: str,
-        max_num_results: int = 10,
-        rewrite_query: bool = False,
-        score_threshold: Optional[float] = None,
-    ) -> list[dict]:
-        """
-        Ищет фрагменты в векторном хранилище (Vector Store API).
-
-        Возвращает список словарей: filename, score, text.
-        """
-        ranking_options = (
-            {"ranker": "auto", "score_threshold": score_threshold}
-            if score_threshold is not None
-            else NOT_GIVEN
-        )
-
-        async with AsyncOpenAI(
-            api_key=self.api_key,
-            base_url=self.api_base,
-            project=self.folder_id,
-            timeout=self.request_timeout,
-        ) as async_http_client:
-            results = await async_http_client.vector_stores.search(
-                vector_store_id=self.vector_store_id,
-                query=query,
-                max_num_results=max_num_results,
-                rewrite_query=rewrite_query,
-                ranking_options=ranking_options,
-            )
-
-        return [
-            {
-                "filename": item.filename,
-                "score": item.score,
-                "text": "\n".join(part.text for part in item.content),
-            }
-            for item in results.data
-        ]
-
     async def send_request(
         self,
         user_content: Any,

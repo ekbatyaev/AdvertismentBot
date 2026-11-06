@@ -97,7 +97,7 @@ async def init_database() -> None:
     connection.close()
     matrix = np.vstack([chunk.embedding for chunk in chunks])
 
-def search(query: str, top_k: int = 5) -> list[SearchResult]:
+def search(query: str, top_k: int = 5, similarity: float = 0.35) -> list[SearchResult]:
     scores = matrix @ embed_text(query)           # векторы нормализованы -> скалярное произведение=косинусное сходство
     best = np.argsort(scores)[::-1][:top_k]       # индексы top_k лучших по убыванию
-    return [SearchResult(chunk=chunks[i], score=float(scores[i])) for i in best]
+    return [SearchResult(chunk=chunks[i], score=float(scores[i])) for i in best if scores[i] > similarity]

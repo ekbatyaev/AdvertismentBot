@@ -161,7 +161,7 @@ async def vector_database_law_search(text: str) -> str:
     При ошибке поиска возвращает пустую строку — анализ продолжается без контекста.
     """
     try:
-        founded_chunks: list[SearchResult] = await asyncio.to_thread(search, text, 5)
+        founded_chunks: list[SearchResult] = await asyncio.to_thread(search, text, 5, 0.4)
     except Exception as e:
         logger.warning(
     f"Поиск по базе знаний не удался, анализ без контекста: {e}")
