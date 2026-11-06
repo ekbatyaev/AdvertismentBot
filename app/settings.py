@@ -2,13 +2,11 @@ from zoneinfo import ZoneInfo
 from loguru import logger
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from dataclasses import field
-
+from pydantic import Field
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 ENV_PATH = BASE_DIR / ".env"
-
 LOG_DIR = BASE_DIR / "logs"
 
 MOSCOW_TZ = ZoneInfo("Europe/Moscow")
@@ -29,19 +27,22 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    telegram_bot_token: str = field(repr=False)
-    max_bot_token: str = field(repr=False)
-    webhook_secret: str = field(repr=False)
+    telegram_bot_token: str = Field(repr=False, exclude=True)
+    max_bot_token: str = Field(repr=False, exclude=True)
+
+    webhook_secret: str = Field(repr=False, exclude=True)
     webhook_port: int
-    webhook_url: str = field(repr=False)
+    webhook_url: str
     webhook_path: str = "/max-webhook"
-    yandex_cloud_model: str
-    yandex_cloud_folder: str
-    yandex_cloud_api_key: str = field(repr=False)
-    vector_store_id: str
 
-    yandex_cloud_llm_url: str
+    llm_base_url: str
+    llm_api_key: str = Field(repr=False, exclude=True)
+    llm_model_name: str
 
+    embedding_model_name: str
+
+    embedding_model_dir: Path = BASE_DIR / "app" / "ai/database/embedding_model/user-bge-m3-int8"
+    docs_dir: Path = BASE_DIR / "app" / "ai/database/docs"
     ai_logs_dir: Path = LOG_DIR / "ai_logs"
 
 settings = Settings()

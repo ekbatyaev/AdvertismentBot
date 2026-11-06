@@ -61,13 +61,11 @@ def _extract_json(content: str) -> Any:
 
 @dataclass
 class LLMClient:
-    api_key: str = settings.yandex_cloud_api_key
-    api_base: str = settings.yandex_cloud_llm_url or "https://rest-assistant.api.cloud.yandex.net/v1"
-    model_name: str = settings.yandex_cloud_model or "aliceai-llm"
-    folder_id: Optional[str] = settings.yandex_cloud_folder or None
-    vector_store_id: Optional[str] = settings.vector_store_id or None
+    api_key: str = settings.llm_api_key
+    api_base: str = settings.llm_base_url
+    model_name: str = settings.llm_model_name
     max_tokens: int = 30000
-    temperature: float = 0.8
+    temperature: float = 0.4
     request_timeout: float = 100.0
     max_retries: int = 3
     system_prompt: str = ""
@@ -142,13 +140,12 @@ class LLMClient:
         async with AsyncOpenAI(
             api_key=self.api_key,
             base_url=self.api_base,
-            project=self.folder_id,
             timeout=self.request_timeout,
         ) as async_http_client:
             for attempt in range(1, self.max_retries + 1):
                 try:
                     response = await async_http_client.responses.create(
-                        model=f"gpt://{self.folder_id}/{self.model_name}",
+                        model=f"{self.model_name}",
                         instructions=self.system_prompt if system_prompt is None else system_prompt,
                         max_output_tokens=self.max_tokens,
                         temperature=self.temperature if temperature is None else temperature,
