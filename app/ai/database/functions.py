@@ -53,7 +53,7 @@ async def fill_database(folder_path: Path) -> list[Chunk]:
 
             # 5. Куски больше потолка делим пополам (сначала по строкам, потом по словам), пока не влезут
             fits = {s for s, n in zip(sections, token_counts) if n <= MAX_TOKENS_LENGTH}# уже влезают — не пересчитываем
-            queue = sections[::-1]                                                  # стек: первый кусок сверху
+            queue = sections[::-1]# стек: первый кусок сверху
             chunks = []
             while queue:
                 piece = queue.pop()
