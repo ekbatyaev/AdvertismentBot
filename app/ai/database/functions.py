@@ -8,7 +8,8 @@ import numpy as np
 import sqlite3
 import re
 
-DOCUMENT_DIVIDER = r"(?=^# \[ТИП_ДОКУМЕНТА\]:|^Постановление Правительства Российской Федерации от|^РОССИЙСКАЯ ФЕДЕРАЦИЯ$)"
+DOCUMENT_DIVIDER = (r"(?=^# \[ТИП_ДОКУМЕНТА\]:|^Постановление Правительства Российской Федерации "
+                    r"от|^РОССИЙСКАЯ ФЕДЕРАЦИЯ$)")
 SECTION_DIVIDER = r"(?=^(?:Раздел|Глава|Статья) )"
 
 chunks: list[Chunk] = []                 # все куски в памяти
@@ -33,7 +34,8 @@ async def fill_database(folder_path: Path) -> list[Chunk]:
 
         for document in documents:
             # Заголовок документа: строки "# [...]" или первая строка, если их нет
-            title = "\n".join(line for line in document.split("\n") if line.startswith("# [")) or document.split("\n", 1)[0]
+            title = ("\n".join(line for line in document.split("\n") if line.startswith("# [")) or
+                     document.split("\n", 1)[0])
 
             # 2. Режем документ на разделы / главы / статьи
             parts = [p.strip() for p in re.split(SECTION_DIVIDER, document, flags=re.MULTILINE) if p.strip()]
@@ -50,7 +52,7 @@ async def fill_database(folder_path: Path) -> list[Chunk]:
             token_counts = count_tokens_batch([f"{title}\n{s}" for s in sections])
 
             # 5. Куски больше потолка делим пополам (сначала по строкам, потом по словам), пока не влезут
-            fits = {s for s, n in zip(sections, token_counts) if n <= MAX_TOKENS_LENGTH}   # уже влезают — не пересчитываем
+            fits = {s for s, n in zip(sections, token_counts) if n <= MAX_TOKENS_LENGTH}# уже влезают — не пересчитываем
             queue = sections[::-1]                                                  # стек: первый кусок сверху
             chunks = []
             while queue:
@@ -74,7 +76,8 @@ async def init_database() -> None:
     global chunks, matrix
     settings.database_path.parent.mkdir(parents=True, exist_ok=True)  # создаём папку под базу, если её нет
     connection = sqlite3.connect(settings.database_path)
-    connection.execute("CREATE TABLE IF NOT EXISTS chunks (id INTEGER PRIMARY KEY, text TEXT NOT NULL, embedding BLOB NOT NULL)")
+    connection.execute("CREATE TABLE IF NOT EXISTS chunks (id INTEGER PRIMARY KEY, text TEXT NOT NULL, "
+                       "embedding BLOB NOT NULL)")
 
     # Таблица пустая — режем документы, считаем эмбеддинги и сохраняем
     if connection.execute("SELECT COUNT(*) FROM chunks").fetchone()[0] == 0:
@@ -94,6 +97,6 @@ async def init_database() -> None:
     matrix = np.vstack([chunk.embedding for chunk in chunks])
 
 def search(query: str, top_k: int = 5) -> list[SearchResult]:
-    scores = matrix @ embed_text(query)           # векторы нормализованы -> скалярное произведение = косинусное сходство
+    scores = matrix @ embed_text(query)           # векторы нормализованы -> скалярное произведение=косинусное сходство
     best = np.argsort(scores)[::-1][:top_k]       # индексы top_k лучших по убыванию
     return [SearchResult(chunk=chunks[i], score=float(scores[i])) for i in best]
