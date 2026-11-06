@@ -26,7 +26,7 @@ def load_embedding_model() -> None:
     if not tokenizer_path.is_file():
         raise FileNotFoundError(f"Токенизатор не найден: {tokenizer_path}")
 
-    logger.info("Загрузка embedding-модели: %s", model_path)
+    logger.info(f"Загрузка embedding-модели: {model_path}")
     model = ort.InferenceSession(str(model_path), providers=["CPUExecutionProvider"])
 
     counting_tokenizer = Tokenizer.from_file(str(tokenizer_path))
@@ -39,4 +39,4 @@ def load_embedding_model() -> None:
     embedding_dim = model.get_outputs()[0].shape[-1]
     if not isinstance(embedding_dim, int):
         raise RuntimeError("Не удалось определить размерность embedding-модели")
-    logger.info("Embedding-модель загружена. Размерность: %d", embedding_dim)
+    logger.info(f"Embedding-модель загружена. Размерность: {embedding_dim}")

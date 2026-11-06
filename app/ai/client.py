@@ -176,26 +176,26 @@ class LLMClient:
                 except APITimeoutError as e:
                     last_error = e
                     logger.warning(
-    "Таймаут на попытке {}/{}",
+    "Таймаут на попытке {}/{}".format(
     attempt,
-     self.max_retries)
+     self.max_retries))
 
                 except (APIConnectionError, OpenAIError) as e:
                     last_error = e
                     logger.warning(
-    "Ошибка запроса на попытке {}/{}: {}",
+    "Ошибка запроса на попытке {}/{}: {}".format(
     attempt,
     self.max_retries,
-     e)
+     e))
 
                 except (LLMBadResponseError, LLMResponseParseError) as e:
                     last_error = e
                     logger.warning(
-                        "Ошибка ответа на попытке {}/{}: {}",
+                        "Ошибка ответа на попытке {}/{}: {}".format(
                         attempt,
                         self.max_retries,
-                        e,
-                    )
+                        e
+                    ))
 
         raise LLMRequestError(
             f"Превышено количество попыток ({self.max_retries})"

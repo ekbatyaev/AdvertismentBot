@@ -13,9 +13,6 @@ def count_tokens_batch(texts: list[str]) -> list[int]:
         raise RuntimeError("Токенизатор не загружен, вызовите load_embedding_model()")
     return [len(e.ids) for e in config.counting_tokenizer.encode_batch(texts)]
 
-def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
-    return float(a @ b)
-
 def embed_texts(texts: list[str], batch_size: int = config.BATCH_SIZE) -> np.ndarray:
     """
     Векторизует список текстов.

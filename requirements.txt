@@ -24,3 +24,7 @@ XlsxWriter~=3.2.0
 # Логирование и настройки
 loguru==0.7.3
 pydantic_settings==2.8.1
+
+# Эмбеддинги
+onnxruntime>=1.20,<2
+tokenizers>=0.21,<1

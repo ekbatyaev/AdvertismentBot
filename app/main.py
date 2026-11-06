@@ -1,5 +1,6 @@
 import asyncio
-from app.ai.database.embedding_model.functions import load_embedding_model
+from app.ai.database.embedding_model.config import load_embedding_model
+from app.ai.database.functions import init_database, search
 from app.settings import settings, logger
 from app.bot.config import dp, bot
 from app.bot.routers import user_router
@@ -11,22 +12,26 @@ async def main():
 
     load_embedding_model()
 
+    logger.info("Загрузка базы данных")
+
+    await init_database()
+
     logger.info("Инициализация бота")
-    # dp.include_routers(user_router)
-    #
-    # await bot.delete_webhook()  # убираем старые подписки
-    # await bot.subscribe_webhook(
-    #     url=settings.webhook_url.rstrip("/") + settings.webhook_path,
-    #     secret=settings.webhook_secret,
-    # )
-    #
-    # await dp.handle_webhook(
-    #     bot=bot,
-    #     host="0.0.0.0",
-    #     port=settings.webhook_port,
-    #     path=settings.webhook_path,
-    #     secret=settings.webhook_secret,
-    # )
+    dp.include_routers(user_router)
+
+    await bot.delete_webhook()  # убираем старые подписки
+    await bot.subscribe_webhook(
+        url=settings.webhook_url.rstrip("/") + settings.webhook_path,
+        secret=settings.webhook_secret,
+    )
+
+    await dp.handle_webhook(
+        bot=bot,
+        host="0.0.0.0",
+        port=settings.webhook_port,
+        path=settings.webhook_path,
+        secret=settings.webhook_secret,
+    )
 
 if __name__ == "__main__":
     asyncio.run(main())

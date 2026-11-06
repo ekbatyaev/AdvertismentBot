@@ -9,6 +9,8 @@ from app.settings import settings, logger, MOSCOW_TZ
 from app.ai.schemas import AiClientSendRequestResponse
 from app.functions import load_data, save_data
 from typing import Any
+from app.ai.database.functions import search
+from app.ai.database.schemas import SearchResult
 
 
 GUIDED_JSON: Final[dict] = {
@@ -119,8 +121,7 @@ async def _save_analysis_log(
             backup = file_name.with_suffix(f".broken-{now:%Y%m%d%H%M%S}.json")
             file_name.rename(backup)
             logger.error(
-    "Файл логов повреждён, сохранён как {}, начинаю новый",
-     backup)
+    f"Файл логов повреждён, сохранён как {backup}, начинаю новый")
             data = []
 
         if not isinstance(data, list):
@@ -129,7 +130,7 @@ async def _save_analysis_log(
         data.append(cell)
         await save_data(file_name, data)
     except Exception as e:
-        logger.exception("Не удалось записать лог анализа: {}", e)
+        logger.exception(f"Не удалось записать лог анализа: {e}")
 
 def _normalize_answers(raw: Any) -> list[dict]:
     """Приводит ответ модели к списку словарей с гарантированными полями и типами."""
@@ -160,19 +161,18 @@ async def vector_database_law_search(text: str) -> str:
     При ошибке поиска возвращает пустую строку — анализ продолжается без контекста.
     """
     try:
-        chunks = await client.search_vector_store(query=text, max_num_results=8)
+        founded_chunks: list[SearchResult] = await asyncio.to_thread(search, text, 5)
     except Exception as e:
         logger.warning(
-    "Поиск по базе знаний не удался, анализ без контекста: {}", e)
+    f"Поиск по базе знаний не удался, анализ без контекста: {e}")
         return ""
 
-    logger.info("Найдено выдержек в базе знаний: {}", len(chunks))
+    logger.info(f"Найдено выдержек в базе знаний: {len(founded_chunks)}")
     return "\n\n".join(
-        f"[Выдержка {i}] (источник: {
-    chunk['filename']}, релевантность: {
-        chunk['score'] or 0:.2f})\n{
-            chunk['text']}"
-        for i, chunk in enumerate(chunks, start=1)
+        f"[Выдержка {i}], релевантность: {
+        cell.score or 0:.2f})\n{
+            cell.chunk.text}"
+        for i, cell in enumerate(founded_chunks, start=1)
     )
 
 async def analyze_text(text: str, temperature: float = None) -> list[dict]:
@@ -220,7 +220,7 @@ async def analyze_text(text: str, temperature: float = None) -> list[dict]:
 
     except Exception as e:
         error = f"{type(e).__name__}: {e}"
-        logger.exception("Ошибка при обработке запроса: {}", e)
+        logger.exception(f"Ошибка при обработке запроса: {e}")
         answers = []
 
     response_time_ms = (time.perf_counter() - start_time) * 1000
@@ -230,7 +230,6 @@ async def analyze_text(text: str, temperature: float = None) -> list[dict]:
 
 if __name__ == "__main__":
     async def main():
-
         single = await analyze_text(text="Наши конкуренты полное говно",
                                     temperature=0.0)
         print(single)
