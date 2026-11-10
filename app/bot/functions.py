@@ -13,6 +13,12 @@ from maxapi.enums.parse_mode import TextFormat
 from maxapi.context.base import BaseContext
 from maxapi.enums.chat_permission import ChatPermission
 from app.bot.schemas import BotPermissions, SendAnalysis, DateValidation
+from app.database.functions.channel_info import (
+    channel_alias,
+    chat_id_from_link,
+    get_channel_by_link,
+)
+from maxapi.enums.chat_type import ChatType
 from aiohttp import ClientError
 from app.bot.states import NavigateStates
 from app.bot.keyboards import option_user_choice
@@ -43,6 +49,43 @@ async def check_bot_channel_permissions(chat_id: int) -> BotPermissions:
      bot_channel_status="Бот не имеет права «Читать все сообщения».")
     return BotPermissions(permission_to_read=True,
                      bot_channel_status="Бот обладает всеми нужными правами.")
+
+async def resolve_channel(link: str) -> int | None:
+    """Ссылка на канал -> chat_id.
+
+    Сначала смотрим в сохранённые каналы, затем пытаемся вытащить id из самой
+    ссылки и только потом идём в API устаревшим get_chat_by_link.
+    """
+    channel = await get_channel_by_link(link)
+    if channel is not None:
+        logger.info(f"Канал {channel_alias(link)} найден в БД: {channel.chat_id}")
+        return channel.chat_id
+
+    chat_id = chat_id_from_link(link)
+    if chat_id is not None:
+        logger.info(f"Канал {channel_alias(link)} разобран как числовой id: {chat_id}")
+        return chat_id
+
+    try:
+        chat = await bot.get_chat_by_link(link)
+    except (ValueError, MaxApiError) as e:
+        logger.warning(f"Не удалось найти канал по ссылке {link}: {e}")
+        return None
+    if chat is None or chat.type != ChatType.CHANNEL:
+        logger.warning(f"По ссылке {link} канал не найден")
+        return None
+    return chat.chat_id
+
+
+async def get_channel_title(chat_id: int, fallback: str) -> str:
+    """Название канала для отчёта. Если API недоступно — запасной вариант."""
+    try:
+        chat = await bot.get_chat_by_id(chat_id)
+    except (ValueError, MaxApiError) as e:
+        logger.warning(f"Не удалось получить название канала {chat_id}: {e}")
+        return fallback
+    return chat.title or fallback
+
 
 async def send_welcome(event, chat_id: int, user, context: BaseContext):
     username = user.username or user.first_name
@@ -79,8 +122,8 @@ async def get_channel_messages(
     while True:
         batch = (await bot.get_messages(
             chat_id=chat_id,
-            from_time=low,
-            to_time=high,
+            after=low,
+            before=high,
             count=PAGE_LIMIT_MAX,
         )).messages
 
@@ -124,12 +167,12 @@ async def run_channel_analysis(message: Message, context: BaseContext,
                                       "занять продолжительное время...*",
                                       format=TextFormat.MARKDOWN)).message
     async with _PARSER_SEMAPHORE:
-        messages_to_analysis = await asyncio.to_thread(get_channel_messages, channel_chat_id,
-                                                       start_date, end_date)
+        messages_to_analysis = await get_channel_messages(channel_chat_id,
+                                                          start_date, end_date)
 
     async with _DOC_CREATION_SEMAPHORE:
-        analysis_result: SendAnalysis = await asyncio.to_thread(send_analysis, messages_to_analysis, channel_name,
-                                                                chat_id)
+        analysis_result: SendAnalysis = await send_analysis(messages_to_analysis, channel_name,
+                                                            chat_id)
 
     await ai_answer.delete()
     await asyncio.sleep(0.5)
@@ -278,7 +321,10 @@ async def send_analysis(
         answer_list = await analyze_text(text=post_text, temperature=0.4)
 
         if answer_list:
-            violations_flag = any(answer["fine"] > 0 for answer in answer_list)
+            violations_flag = any(
+                answer["fine"] > 0 or answer["violations"] == "Да"
+                for answer in answer_list
+            )
         else:
             logger.error(f"Ошибка при обработке запроса:\n\n{post_text}")
             answer_list = []

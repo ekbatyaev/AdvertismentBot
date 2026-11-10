@@ -9,6 +9,6 @@ logs/
 .idea/
 .DS_Store
 *.json
-EOF
+app/ai/database/
 app/database/embedding_model/user-bge-m3-int8/
 app/database/data*.onnx

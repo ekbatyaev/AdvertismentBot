@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import json
+import re
 import time
 from pathlib import Path
 from typing import Final
@@ -77,11 +78,30 @@ SYSTEM_PROMPT: Final[str] = """\
 - violations: "Да" или "Нет";
 - description: строка с объяснением и указанием статей только из релевантных выдержек;
 - fine: целое число — максимальный размер штрафа в рублях. Если штраф указан диапазоном,
-возьми верхнюю границу. Если нарушения нет, укажи 0, никогда не null;
-- recommendation: строка с рекомендацией.
+возьми верхнюю границу. Если нарушения нет, укажи 0, никогда не null. Если нарушение установлено,
+fine не может быть 0: возьми верхнюю границу санкции для юридического лица по применимой статье
+КоАП РФ (для нарушений законодательства о рекламе — статья 14.3 КоАП РФ);
+- recommendation: строка с рекомендацией и конкретным примером исправления.
 Пример: {"analysis": [{"violations": "Нет", "description": "...", "fine": 0, "recommendation": "..."}]}
 Не добавляй никаких других полей и не оборачивай ответ в markdown.
 """
+
+# Дополнительные запросы к базе знаний: короткий рекламный текст сам по себе
+# не вытягивает статьи о санкциях, поэтому добираем их отдельно.
+AUX_QUERIES: Final[tuple[tuple[str, int, float], ...]] = (
+    (
+        "некорректное сравнение и недостоверные сведения в рекламе, общие требования "
+        "к рекламе, статья 5 Федерального закона № 38-ФЗ «О рекламе»",
+        4,
+        0.50,
+    ),
+    (
+        "штраф за нарушение законодательства о рекламе, статья 14.3 КоАП РФ, "
+        "размер штрафа для юридических лиц",
+        3,
+        0.50,
+    ),
+)
 
 async def _save_analysis_log(
     text: str,
@@ -93,7 +113,8 @@ async def _save_analysis_log(
     """Пишет результат анализа в месячный JSON-лог. Никогда не бросает исключений."""
     try:
         violations_flag = any(
-    answer["violations"] == "Да" for answer in answers)
+    answer["violations"] == "Да" or answer["fine"] > 0
+    for answer in answers)
         sorted_answers = sorted(
     answers,
     key=lambda answer: answer["fine"],
@@ -143,6 +164,26 @@ async def _save_analysis_log(
     except Exception as e:
         logger.exception(f"Не удалось записать лог анализа: {e}")
 
+def _parse_fine(value: Any) -> int:
+    """Максимальный штраф из значения модели.
+
+    Модель может вернуть число, строку с диапазоном («от 100 000 до 500 000»)
+    или null. Берём верхнюю границу: для диапазона — максимальное число.
+    """
+    if isinstance(value, bool):
+        return 0
+    if isinstance(value, (int, float)):
+        return max(int(value), 0)
+    if isinstance(value, str):
+        cleaned = (
+            value.replace("\u00a0", " ")
+            .replace("\u202f", " ")
+            .replace(" ", "")
+        )
+        numbers = [int(number) for number in re.findall(r"\d+", cleaned)]
+        return max(numbers) if numbers else 0
+    return 0
+
 def _normalize_answers(raw: Any) -> list[dict]:
     """Приводит ответ модели к списку словарей с гарантированными полями и типами."""
     if isinstance(raw, dict):
@@ -154,14 +195,10 @@ def _normalize_answers(raw: Any) -> list[dict]:
     for item in raw:
         if not isinstance(item, dict):
             continue
-        try:
-            fine = int(item.get("fine") or 0)
-        except (TypeError, ValueError):
-            fine = 0
         answers.append({
             "violations": "Да" if item.get("violations") == "Да" else "Нет",
             "description": str(item.get("description") or ""),
-            "fine": max(fine, 0),
+            "fine": _parse_fine(item.get("fine")),
             "recommendation": str(item.get("recommendation") or ""),
         })
     return answers
@@ -172,17 +209,31 @@ async def vector_database_law_search(text: str) -> str:
     При ошибке поиска возвращает пустую строку — анализ продолжается без контекста.
     """
     try:
-        founded_chunks: list[SearchResult] = await asyncio.to_thread(search, text, 5, 0.35)
+        founded_chunks: list[SearchResult] = await asyncio.to_thread(
+            search, text, 5, 0.35)
+        for query, aux_top_k, aux_similarity in AUX_QUERIES:
+            founded_chunks += await asyncio.to_thread(
+                search, query, aux_top_k, aux_similarity)
     except Exception as e:
         logger.warning(
     f"Поиск по базе знаний не удался, анализ без контекста: {e}")
         return ""
 
-    logger.info(f"Найдено выдержек в базе знаний: {len(founded_chunks)}")
+    unique: list[SearchResult] = []
+    seen: set[str] = set()
+    for cell in founded_chunks:
+        if cell.chunk.text in seen:
+            continue
+        seen.add(cell.chunk.text)
+        unique.append(cell)
+
+    logger.info(
+    f"Найдено выдержек в базе знаний: {len(unique)} "
+    f"(с учётом норм о рекламе и штрафах)")
     return "\n\n".join(
         f"[Выдержка {i}]\n{
             cell.chunk.text}"
-        for i, cell in enumerate(founded_chunks, start=1)
+        for i, cell in enumerate(unique, start=1)
     )
 
 async def analyze_text(text: str, temperature: float = None) -> list[dict]:

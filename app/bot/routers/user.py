@@ -13,7 +13,9 @@ from app.bot.functions import (
     edit_last_message,
     run_channel_analysis,
     send_welcome,
-     check_bot_channel_permissions)
+    check_bot_channel_permissions,
+    get_channel_title,
+    resolve_channel)
 from app.bot.keyboards import option_user_choice, option_user_go_back, option_user_choose_time_interval
 from app.ai.functions.ad_analysis import analyze_text
 from app.bot.schemas import BotPermissions, DateValidation
@@ -23,7 +25,11 @@ from maxapi.enums.parse_mode import TextFormat
 from maxapi.enums.upload_type import UploadType
 from maxapi.types import InputMedia, MessageCreated, MessageCallback, BotStarted
 from maxapi.filters.command import CommandStart, Command
-from app.database.functions.channel_info import get_channel_by_link
+from app.database.functions.channel_info import (
+    get_channel_by_link,
+    is_channel_link,
+    normalize_channel_link,
+)
 
 # Инициализация путей использования бота
 user_router = Router(router_id="user")
@@ -136,7 +142,10 @@ async def message_analyze(event: MessageCreated,
         logger.error(f"Ошибка обработки сообщения: {text}")
         return
 
-    violations_flag = any(answer["fine"] > 0 for answer in answer_list)
+    violations_flag = any(
+        answer["fine"] > 0 or answer["violations"] == "Да"
+        for answer in answer_list
+    )
 
     if violations_flag:
         answer_list = sorted(
@@ -197,29 +206,34 @@ async def back_to_previous(event: MessageCallback, context: BaseContext):
                              NavigateStates.get_channel_url)
 async def check_bot_rights(event: MessageCreated, context: BaseContext):
     await asyncio.sleep(0.5)
-    text = event.message.body.text.strip()
-    logger.info(text)
-    if not text.startswith("https://max.ru/"):
+    link = normalize_channel_link(event.message.body.text)
+    logger.info(link)
+    if not is_channel_link(link):
         await asyncio.sleep(0.5)
         await event.message.answer("Пожалуйста, пришли мне "
                                    "**ссылку на канал** в формате **https://max.ru/channel_systeme_electric** 🔗",
                                 format=TextFormat.MARKDOWN)
-        logger.warning(f"Неправильная ссылка на канал: {text}")
+        logger.warning(f"Неправильная ссылка на канал: {link}")
         return
 
-    channel_info: BotChannelInfo | None = await get_channel_by_link(text)
+    channel_chat_id = await resolve_channel(link)
 
-    if channel_info is None:
+    if channel_chat_id is None:
         await asyncio.sleep(0.5)
         await event.message.answer(
             "Я не смог найти **канал** по ссылке. Проверьте "
             "**правильноcть написания ссылки** и сделали ли вы меня **администратором канала**.",
             format=TextFormat.MARKDOWN)
         logger.warning(
-    f"Канал не найден или бот не добавлен в его администраторы: {text}")
+    f"Канал не найден или бот не добавлен в его администраторы: {link}")
         return
 
-    check_bot_permissions: BotPermissions = await check_bot_channel_permissions(channel_info.chat_id)
+    channel_info: BotChannelInfo | None = await get_channel_by_link(link)
+    channel_title = (channel_info.title
+                     if channel_info is not None and channel_info.title
+                     else await get_channel_title(channel_chat_id, str(channel_chat_id)))
+
+    check_bot_permissions: BotPermissions = await check_bot_channel_permissions(channel_chat_id)
     if not check_bot_permissions.permission_to_read:
         await asyncio.sleep(0.5)
         await event.message.answer(
@@ -233,12 +247,12 @@ async def check_bot_rights(event: MessageCreated, context: BaseContext):
 
 
     await edit_last_message(context,
-                            text=f"Канал для анализа:\n{text}")
+                            text=f"Канал для анализа:\n{channel_title}")
     await asyncio.sleep(0.5)
     last_message = await event.message.answer("Какой период постов нужно проверить?",
                                         attachments=[option_user_choose_time_interval()])
-    await context.update_data(channel_name=channel_info.title or str(channel_info.chat_id),
-                              channel_chat_id=channel_info.chat_id,
+    await context.update_data(channel_name=channel_title,
+                              channel_chat_id=channel_chat_id,
                               last_message_id=last_message.message.body.mid)
     await context.set_state(NavigateStates.get_time_choice)
 
@@ -320,5 +334,5 @@ async def get_interval(event: MessageCreated, context: BaseContext):
     await run_channel_analysis(message=event.message, context=context,
                                chat_id=event.message.recipient.chat_id,
                                start_date=datetime.strptime(
-                                   dates[0], "%Y.%m.%d"),
-                               end_date=datetime.strptime(dates[1], "%Y.%m.%d"))
+                                   dates[0], "%d.%m.%Y"),
+                               end_date=datetime.strptime(dates[1], "%d.%m.%Y"))

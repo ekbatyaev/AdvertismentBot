@@ -3,7 +3,7 @@ from app.database.embedding_model.functions import count_tokens, count_tokens_ba
 from app.database.embedding_model.config import MAX_TOKENS_LENGTH
 from app.database.schemas import Chunk, SearchResult
 from typing import Optional
-from app.settings import settings
+from app.settings import logger, settings
 import numpy as np
 import re
 
@@ -97,5 +97,9 @@ async def init_chunks(conn) -> None:
         Chunk(id=id_, text=text, embedding=np.frombuffer(blob, dtype=np.float32))
         for id_, text, blob in conn.execute("SELECT id, text, embedding FROM chunks")
     ]
-    conn.close()
+    if not chunks:
+        raise RuntimeError(
+            f"База знаний пуста: в {settings.docs_dir} не найдено ни одного документа"
+        )
     matrix = np.vstack([chunk.embedding for chunk in chunks])
+    logger.info(f"База знаний загружена: {len(chunks)} чанков")
