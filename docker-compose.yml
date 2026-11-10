@@ -10,7 +10,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./logs:/app/logs
-      - ./app/ai/database/data:/app/app/ai/database/data
+      - ./app/database/data:/app/app/database/data
     ports:
       - "${WEBHOOK_PORT}:${WEBHOOK_PORT}"
 
