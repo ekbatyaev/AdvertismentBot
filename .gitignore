@@ -13,3 +13,4 @@ app/ai/database/
 app/database/embedding_model/user-bge-m3-int8/
 app/database/data*.onnx
 app/database/data/
+tests

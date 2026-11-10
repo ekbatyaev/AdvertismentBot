@@ -44,29 +44,39 @@ Telegram-бот анализирует сообщения и посты Telegram
 ```
 .
 ├── app/
-│   ├── main.py                    # Точка входа: запуск polling
-│   ├── settings.py                # Настройки из .env, логирование (loguru)
-│   ├── functions.py               # Чтение/атомарная запись JSON-логов
+│   ├── main.py                       # Точка входа
+│   ├── settings.py                   # Настройки из .env, пути, логирование (loguru)
+│   ├── functions.py                  # Чтение/атомарная запись JSON-логов
+│   ├── schemas.py                    # Общие модели данных
 │   ├── ai/
-│   │   ├── client.py              # Клиент Yandex AI Studio: генерация + поиск по Vector Store
-│   │   ├── models.py              # Модели ответов клиента
+│   │   ├── client.py                 # Клиент YandexGPT
+│   │   ├── schemas.py                # Модели ответов клиента
 │   │   └── functions/
-│   │       └── ad_analysis.py     # Промпт, JSON-схема, анализ текста, логирование результата
+│   │       └── ad_analysis.py        # Промпт, JSON-схема, анализ текста, логирование результата
 │   ├── bot/
-│   │   ├── config.py              # Bot и Dispatcher (aiogram)
-│   │   ├── routers.py             # Обработчики команд и кнопок
-│   │   ├── functions.py           # Анализ канала, Excel-отчёт, валидация дат
-│   │   ├── keyboards.py           # Клавиатуры
-│   │   └── states.py              # FSM-состояния
-│   └── parser/
-│       ├── driver.py              # Настройка Selenium / Chromium
-│       └── telegram_web_parser.py # Парсинг t.me/s/<канал>
-├── docs/
-│   └── all_law_ad_text.txt        # Исходные тексты базы знаний
-├── scripts/
-│   ├── create_vector_store.py     # Создание векторного хранилища из docs/
-│   └── ...                        # Прочие старые скрипты
-├── logs/                          # app.log и ai_logs/*.json (монтируется в Docker)
+│   │   ├── functions.py              # Анализ канала, Excel-отчёт, валидация дат
+│   │   └── routers/
+│   │       ├── user.py               # Команды и кнопки пользователя
+│   │       └── events.py             # Обработчики событий
+│   └── database/
+│       ├── init.py                   # Инициализация SQLite при старте
+│       ├── schemas.py                # Модели данных БД
+│       ├── data/
+│       │   ├── bot.db                # Рабочая база: каналы + фрагменты базы знаний с эмбеддингами
+│       │   └── chunks.db             # Исходная база знаний, копируется в bot.db при первом запуске
+│       ├── docs/
+│       │   └── all_law_ad_text.txt   # Исходные тексты базы знаний
+│       ├── embedding_model/
+│       │   ├── config.py             # Настройки модели эмбеддингов
+│       │   ├── functions.py          # Загрузка модели и расчёт эмбеддингов
+│       │   └── user-bge-m3-int8/     # Веса модели bge-m3 (int8)
+│       └── functions/
+│           ├── channel_info.py       # Таблица информации о каналах
+│           └── chunks.py             # Таблица фрагментов и векторный поиск
+├── tests/
+│   ├── test_ad_analysis.py
+│   └── test_channel_links.py
+├── logs/                             # app.log и ai_logs/*.json (монтируется в Docker)
 ├── Dockerfile
 ├── docker-compose.yml
 ├── requirements.txt
