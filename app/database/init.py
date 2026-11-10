@@ -8,7 +8,7 @@ async def init_database() -> None:
     settings.database_path.parent.mkdir(parents=True, exist_ok=True)  # создаём папку под базу, если её нет
     connection = sqlite3.connect(settings.database_path)
 
-    logger.info("Инициализация таблицы данных информации о каналх")
+    logger.info("Инициализация таблицы данных информации о каналах")
 
     await init_channel_info(connection)
 

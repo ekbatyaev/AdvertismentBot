@@ -41,11 +41,11 @@ class Settings(BaseSettings):
 
     embedding_model_name: str
 
-    embedding_model_dir: Path = BASE_DIR / "app" / "ai/database/embedding_model/user-bge-m3-int8"
-    docs_dir: Path = BASE_DIR / "app" / "ai/database/docs"
+    embedding_model_dir: Path = BASE_DIR / "app" / "database/embedding_model/user-bge-m3-int8"
+    docs_dir: Path = BASE_DIR / "app" / "database/docs"
     ai_logs_dir: Path = LOG_DIR / "ai_logs"
 
-    database_path: Path = BASE_DIR / "app" / "ai/database/data/bot.db"
+    database_path: Path = BASE_DIR / "app" / "database/data/bot.db"
 
 settings = Settings()
 
