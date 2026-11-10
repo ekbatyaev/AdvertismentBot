@@ -11,8 +11,6 @@ from maxapi.exceptions.max import MaxApiError, MaxConnection, MaxUploadFileFaile
 from maxapi.enums.upload_type import UploadType
 from maxapi.enums.parse_mode import TextFormat
 from maxapi.context.base import BaseContext
-from maxapi.types.chats import Chat
-from maxapi.enums.chat_type import ChatType
 from maxapi.enums.chat_permission import ChatPermission
 from app.bot.schemas import BotPermissions, SendAnalysis, DateValidation
 from aiohttp import ClientError
@@ -45,14 +43,6 @@ async def check_bot_channel_permissions(chat_id: int) -> BotPermissions:
      bot_channel_status="Бот не имеет права «Читать все сообщения».")
     return BotPermissions(permission_to_read=True,
                      bot_channel_status="Бот обладает всеми нужными правами.")
-
-async def check_channel_by_url(link: str) -> Chat | None:
-    """Ссылка/алиас -> Chat или None."""
-    try:
-        chat = await bot.get_chat_by_link(link)
-    except (ValueError, MaxApiError):
-        return None
-    return chat if chat.type == ChatType.CHANNEL else None
 
 async def send_welcome(event, chat_id: int, user, context: BaseContext):
     username = user.username or user.first_name

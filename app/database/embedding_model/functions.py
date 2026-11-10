@@ -1,4 +1,4 @@
-from app.ai.database.embedding_model import config
+from app.database.embedding_model import config
 import numpy as np
 
 def count_tokens(text: str) -> int:

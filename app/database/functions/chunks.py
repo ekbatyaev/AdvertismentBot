@@ -1,11 +1,10 @@
 from pathlib import Path
-from app.ai.database.embedding_model.functions import count_tokens, count_tokens_batch, embed_texts, embed_text
-from app.ai.database.embedding_model.config import MAX_TOKENS_LENGTH
-from app.ai.database.schemas import Chunk, SearchResult
-from app.settings import settings
+from app.database.embedding_model.functions import count_tokens, count_tokens_batch, embed_texts, embed_text
+from app.database.embedding_model.config import MAX_TOKENS_LENGTH
+from app.database.schemas import Chunk, SearchResult
 from typing import Optional
+from app.settings import settings
 import numpy as np
-import sqlite3
 import re
 
 DOCUMENT_DIVIDER = (r"(?=^# \[ТИП_ДОКУМЕНТА\]:|^Постановление Правительства Российской Федерации "
@@ -24,7 +23,7 @@ def clean_text(text: str) -> str:
     text = re.sub(r"\n{3,}", "\n\n", text)                   # больше одной пустой строки -> одна
     return text.strip()
 
-async def fill_database(folder_path: Path) -> list[Chunk]:
+async def fill_chunks_table(folder_path: Path) -> list[Chunk]:
     result: list[Chunk] = []
     for txt_file in folder_path.glob("*.txt"):
         text = clean_text(txt_file.read_text(encoding="utf-8"))
@@ -73,31 +72,30 @@ async def fill_database(folder_path: Path) -> list[Chunk]:
 
     return result
 
-async def init_database() -> None:
-    global chunks, matrix
-    settings.database_path.parent.mkdir(parents=True, exist_ok=True)  # создаём папку под базу, если её нет
-    connection = sqlite3.connect(settings.database_path)
-    connection.execute("CREATE TABLE IF NOT EXISTS chunks (id INTEGER PRIMARY KEY, text TEXT NOT NULL, "
-                       "embedding BLOB NOT NULL)")
-
-    # Таблица пустая — режем документы, считаем эмбеддинги и сохраняем
-    if connection.execute("SELECT COUNT(*) FROM chunks").fetchone()[0] == 0:
-        rows: list[Chunk] = await fill_database(settings.docs_dir)
-        connection.executemany(
-            "INSERT INTO chunks (text, embedding) VALUES (?, ?)",
-            [(row.text, row.embedding.astype(np.float32).tobytes()) for row in rows],   # вектор -> байты
-        )
-        connection.commit()
-
-    # Читаем всё обратно: байты -> вектор
-    chunks = [
-        Chunk(id=id_, text=text, embedding=np.frombuffer(blob, dtype=np.float32))
-        for id_, text, blob in connection.execute("SELECT id, text, embedding FROM chunks")
-    ]
-    connection.close()
-    matrix = np.vstack([chunk.embedding for chunk in chunks])
-
 def search(query: str, top_k: int = 5, similarity: float = 0.35) -> list[SearchResult]:
     scores = matrix @ embed_text(query)           # векторы нормализованы -> скалярное произведение=косинусное сходство
     best = np.argsort(scores)[::-1][:top_k]       # индексы top_k лучших по убыванию
     return [SearchResult(chunk=chunks[i], score=float(scores[i])) for i in best if scores[i] > similarity]
+
+async def init_chunks(conn) -> None:
+    global chunks, matrix
+    # Создание таблицы чанков
+    conn.execute("CREATE TABLE IF NOT EXISTS chunks (id INTEGER PRIMARY KEY, text TEXT NOT NULL, "
+                       "embedding BLOB NOT NULL)")
+
+    # Таблица пустая — режем документы, считаем эмбеддинги и сохраняем
+    if conn.execute("SELECT COUNT(*) FROM chunks").fetchone()[0] == 0:
+        rows: list[Chunk] = await fill_chunks_table(settings.docs_dir)
+        conn.executemany(
+            "INSERT INTO chunks (text, embedding) VALUES (?, ?)",
+            [(row.text, row.embedding.astype(np.float32).tobytes()) for row in rows],  # вектор -> байты
+        )
+        conn.commit()
+
+    # Читаем всё обратно: байты -> вектор
+    chunks = [
+        Chunk(id=id_, text=text, embedding=np.frombuffer(blob, dtype=np.float32))
+        for id_, text, blob in conn.execute("SELECT id, text, embedding FROM chunks")
+    ]
+    conn.close()
+    matrix = np.vstack([chunk.embedding for chunk in chunks])

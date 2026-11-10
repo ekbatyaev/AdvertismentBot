@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     docs_dir: Path = BASE_DIR / "app" / "ai/database/docs"
     ai_logs_dir: Path = LOG_DIR / "ai_logs"
 
-    database_path: Path = BASE_DIR / "app" / "ai/database/data/chunks.db"
+    database_path: Path = BASE_DIR / "app" / "ai/database/data/bot.db"
 
 settings = Settings()
 

@@ -2,6 +2,8 @@ import asyncio
 from dateutil.relativedelta import relativedelta
 from datetime import datetime, timedelta
 from maxapi.exceptions import MaxApiError
+
+from app.schemas import BotChannelInfo
 from app.settings import settings, logger, MOSCOW_TZ
 from app.functions import load_data
 from app.bot.states import NavigateStates, AnalyzeStates
@@ -11,7 +13,6 @@ from app.bot.functions import (
     edit_last_message,
     run_channel_analysis,
     send_welcome,
-    check_channel_by_url,
      check_bot_channel_permissions)
 from app.bot.keyboards import option_user_choice, option_user_go_back, option_user_choose_time_interval
 from app.ai.functions.ad_analysis import analyze_text
@@ -22,7 +23,7 @@ from maxapi.enums.parse_mode import TextFormat
 from maxapi.enums.upload_type import UploadType
 from maxapi.types import InputMedia, MessageCreated, MessageCallback, BotStarted
 from maxapi.filters.command import CommandStart, Command
-from maxapi.types.chats import Chat
+from app.database.functions.channel_info import get_channel_by_link
 
 # Инициализация путей использования бота
 user_router = Router(router_id="user")
@@ -206,12 +207,12 @@ async def check_bot_rights(event: MessageCreated, context: BaseContext):
         logger.warning(f"Неправильная ссылка на канал: {text}")
         return
 
-    channel_info: Chat | None = await check_channel_by_url(text)
+    channel_info: BotChannelInfo | None = await get_channel_by_link(text)
 
     if channel_info is None:
         await asyncio.sleep(0.5)
         await event.message.answer(
-            "Я не смог найти **публичный канал** по ссылке. Проверьте "
+            "Я не смог найти **канал** по ссылке. Проверьте "
             "**правильноcть написания ссылки** и сделали ли вы меня **администратором канала**.",
             format=TextFormat.MARKDOWN)
         logger.warning(

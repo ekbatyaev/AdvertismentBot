@@ -9,8 +9,8 @@ from app.settings import settings, logger, MOSCOW_TZ
 from app.ai.schemas import AiClientSendRequestResponse
 from app.functions import load_data, save_data
 from typing import Any
-from app.ai.database.functions import search
-from app.ai.database.schemas import SearchResult
+from app.database.functions.chunks import search
+from app.database.schemas import SearchResult
 
 
 GUIDED_JSON: Final[dict] = {

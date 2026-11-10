@@ -10,5 +10,5 @@ logs/
 .DS_Store
 *.json
 EOF
-app/ai/database/embedding_model/user-bge-m3-int8/
-app/ai/database/data
+app/database/embedding_model/user-bge-m3-int8/
+app/database/data*.onnx
