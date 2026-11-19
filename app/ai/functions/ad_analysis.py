@@ -58,6 +58,7 @@ GUIDED_JSON: Final[dict] = {
     }
 }
 
+
 SYSTEM_PROMPT: Final[str] = """\
 Ты — эксперт по рекламному праву. В сообщении пользователя приведены выдержки из базы знаний
 (законы, разъяснения ФАС и ЦБ) и текст запроса.
@@ -86,48 +87,32 @@ fine не может быть 0: возьми верхнюю границу са
 Не добавляй никаких других полей и не оборачивай ответ в markdown.
 """
 
-# Дополнительные запросы к базе знаний: короткий рекламный текст сам по себе
-# не вытягивает статьи о санкциях, поэтому добираем их отдельно.
-AUX_QUERIES: Final[tuple[tuple[str, int, float], ...]] = (
-    (
-        "некорректное сравнение и недостоверные сведения в рекламе, общие требования "
-        "к рекламе, статья 5 Федерального закона № 38-ФЗ «О рекламе»",
-        4,
-        0.50,
-    ),
-    (
-        "штраф за нарушение законодательства о рекламе, статья 14.3 КоАП РФ, "
-        "размер штрафа для юридических лиц",
-        3,
-        0.50,
-    ),
-)
 
 async def _save_analysis_log(
-    text: str,
-    answers: list[dict],
-    input_tokens: int,
-    output_tokens: int,
-    response_time_ms: float,
-     error: str | None) -> None:
+        text: str,
+        answers: list[dict],
+        input_tokens: int,
+        output_tokens: int,
+        response_time_ms: float,
+        error: str | None) -> None:
     """Пишет результат анализа в месячный JSON-лог. Никогда не бросает исключений."""
     try:
         violations_flag = any(
-    answer["violations"] == "Да" or answer["fine"] > 0
-    for answer in answers)
+            answer["violations"] == "Да" or answer["fine"] > 0
+            for answer in answers)
         sorted_answers = sorted(
-    answers,
-    key=lambda answer: answer["fine"],
-     reverse=True)
+            answers,
+            key=lambda answer: answer["fine"],
+            reverse=True)
 
         descriptions = ""
         recommendations = ""
         for i, answer in enumerate(sorted_answers, start=1):
             descriptions += f"{i}) Описание:\n{
-    answer['description']}\n\nВозможный штраф: {
-        answer['fine']}\n\n"
+                answer['description']}\n\nВозможный штраф: {
+                answer['fine']}\n\n"
             recommendations += f"{i}) Рекомендация:\n{
-    answer['recommendation']}\n\n"
+                answer['recommendation']}\n\n"
 
         cell = {
             "Текст публикации": text,
@@ -153,7 +138,7 @@ async def _save_analysis_log(
             backup = file_name.with_suffix(f".broken-{now:%Y%m%d%H%M%S}.json")
             file_name.rename(backup)
             logger.error(
-    f"Файл логов повреждён, сохранён как {backup}, начинаю новый")
+                f"Файл логов повреждён, сохранён как {backup}, начинаю новый")
             data = []
 
         if not isinstance(data, list):
@@ -163,6 +148,7 @@ async def _save_analysis_log(
         await save_data(file_name, data)
     except Exception as e:
         logger.exception(f"Не удалось записать лог анализа: {e}")
+
 
 def _parse_fine(value: Any) -> int:
     """Максимальный штраф из значения модели.
@@ -184,6 +170,7 @@ def _parse_fine(value: Any) -> int:
         return max(numbers) if numbers else 0
     return 0
 
+
 def _normalize_answers(raw: Any) -> list[dict]:
     """Приводит ответ модели к списку словарей с гарантированными полями и типами."""
     if isinstance(raw, dict):
@@ -203,6 +190,7 @@ def _normalize_answers(raw: Any) -> list[dict]:
         })
     return answers
 
+
 async def vector_database_law_search(text: str) -> str:
     """
     Находит выдержки из базы знаний и собирает их в контекст для промпта.
@@ -210,13 +198,10 @@ async def vector_database_law_search(text: str) -> str:
     """
     try:
         founded_chunks: list[SearchResult] = await asyncio.to_thread(
-            search, text, 5, 20, 0.35)
-        for query, aux_top_k, aux_similarity in AUX_QUERIES:
-            founded_chunks += await asyncio.to_thread(
-                search, query, aux_top_k, 20, aux_similarity)
+            search, text, 5, 50, 0.2)
     except Exception as e:
         logger.warning(
-    f"Поиск по базе знаний не удался, анализ без контекста: {e}")
+            f"Поиск по базе знаний не удался, анализ без контекста: {e}")
         return ""
 
     unique: list[SearchResult] = []
@@ -228,13 +213,14 @@ async def vector_database_law_search(text: str) -> str:
         unique.append(cell)
 
     logger.info(
-    f"Найдено выдержек в базе знаний: {len(unique)} "
-    f"(с учётом норм о рекламе и штрафах)")
+        f"Найдено выдержек в базе знаний: {len(unique)} "
+        f"(с учётом норм о рекламе и штрафах)")
     return "\n\n".join(
         f"[Выдержка {i}]\n{
             cell.chunk.text}"
         for i, cell in enumerate(unique, start=1)
     )
+
 
 async def analyze_text(text: str, temperature: float = None) -> list[dict]:
     """
@@ -255,7 +241,7 @@ async def analyze_text(text: str, temperature: float = None) -> list[dict]:
                 "type": "input_text",
                 "text": (
                     f"Выдержки из базы знаний:\n\n{
-    knowledge_context or 'Ничего не найдено.'}\n\n"
+                        knowledge_context or 'Ничего не найдено.'}\n\n"
                     "---\n\n"
                     "Проанализируй рекламное утверждение: "
                     f"«{text}» "
@@ -276,7 +262,7 @@ async def analyze_text(text: str, temperature: float = None) -> list[dict]:
 
         if not answers:
             error = f"Модель вернула пустой или некорректный analysis: {
-    request_result.result!r}"
+                request_result.result!r}"
             logger.error(error)
 
     except Exception as e:
@@ -288,6 +274,7 @@ async def analyze_text(text: str, temperature: float = None) -> list[dict]:
     await _save_analysis_log(text, answers, input_tokens, output_tokens, response_time_ms, error)
 
     return answers
+
 
 if __name__ == "__main__":
     async def main():

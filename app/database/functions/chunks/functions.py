@@ -3,10 +3,16 @@ from app.database.models.functions import embed_text, rerank_results
 from app.database.schemas import Chunk, SearchResult
 from app.settings import settings, logger
 from app.database.functions.chunks.fill import fill_chunks_table
+from typing import Optional
+
+
+chunks: list[Chunk] = []                 # все куски в памяти
+matrix: Optional[np.ndarray] = None      # их векторы одной матрицей (n, 1024) для быстрого поиска
 
 
 def search(query: str, top_k: int = 5, count_rerank: int = 20, similarity: float = 0.35) -> list[SearchResult]:
-    emb_scores = matrix @ embed_text(query)           # векторы нормализованы -> скалярное произведение=косинусное сходство
+    # векторы нормализованы -> скалярное произведение=косинусное сходство
+    emb_scores = matrix @ embed_text(query)
     emb_sorted = np.argsort(emb_scores)[::-1][:count_rerank]     # индексы top_k лучших по убыванию
 
     # Сортируем по значению эмбеддинга
@@ -15,14 +21,15 @@ def search(query: str, top_k: int = 5, count_rerank: int = 20, similarity: float
     # Используем для сортировки реранкер
     ranked = rerank_results(query, chunks, emb_best)[:top_k]
 
-    return [SearchResult(chunk=chunks[idx], score=score) for idx, score in ranked]
+    return [SearchResult(chunk=chunks[idx], embedding_score=float(emb_scores[idx]), rerank_score=score)
+            for idx, score in ranked]
 
 
 async def init_chunks(conn) -> None:
     global chunks, matrix
     # Создание таблицы чанков
     conn.execute("CREATE TABLE IF NOT EXISTS chunks (id INTEGER PRIMARY KEY, text TEXT NOT NULL, "
-                       "embedding BLOB NOT NULL)")
+                 "embedding BLOB NOT NULL)")
 
     # Таблица пустая — режем документы, считаем эмбеддинги и сохраняем
     if conn.execute("SELECT COUNT(*) FROM chunks").fetchone()[0] == 0:
