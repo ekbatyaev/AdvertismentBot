@@ -1,6 +1,7 @@
 from typing import Optional
 from pydantic import BaseModel
 
+
 class BotChannelInfo(BaseModel):
     chat_id: int
 

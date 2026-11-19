@@ -19,6 +19,7 @@ logger.add(
     enqueue=True
 )
 
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=ENV_PATH,
@@ -47,6 +48,7 @@ class Settings(BaseSettings):
     ai_logs_dir: Path = LOG_DIR / "ai_logs"
 
     database_path: Path = BASE_DIR / "app" / "database/data/bot.db"
+
 
 settings = Settings()
 

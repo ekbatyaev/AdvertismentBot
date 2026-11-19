@@ -26,7 +26,7 @@ class LLMBadResponseError(LLMClientError):
 
 _CODE_FENCE_RE = re.compile(
     r"^```(?:json)?\s*|\s*```$",
-     re.IGNORECASE | re.MULTILINE)
+    re.IGNORECASE | re.MULTILINE)
 
 
 def _extract_json(content: str) -> Any:
@@ -55,8 +55,8 @@ def _extract_json(content: str) -> Any:
             ) from e
 
     raise LLMResponseParseError(
-    f"Не удалось распарсить content как JSON: {
-        content!r}")
+        f"Не удалось распарсить content как JSON: {
+            content!r}")
 
 
 @dataclass
@@ -121,40 +121,40 @@ class LLMClient:
                     if response.status != "completed":
                         error = response.error.message if response.error else response.incomplete_details
                         raise LLMBadResponseError(
-    f"Модель вернула status={
-        response.status}: {error}")
+                            f"Модель вернула status={
+                                response.status}: {error}")
 
                     raw_output = response.output_text or ""
 
                     result = _extract_json(raw_output)
                     return AiClientSendRequestResponse(
-    result=result,
-    input_tokens=response.usage.input_tokens,
-     output_tokens=response.usage.output_tokens)
+                        result=result,
+                        input_tokens=response.usage.input_tokens,
+                        output_tokens=response.usage.output_tokens)
 
                 except APITimeoutError as e:
                     last_error = e
                     logger.warning(
-    "Таймаут на попытке {}/{}".format(
-    attempt,
-     self.max_retries))
+                        "Таймаут на попытке {}/{}".format(
+                            attempt,
+                            self.max_retries))
 
                 except (APIConnectionError, OpenAIError) as e:
                     last_error = e
                     logger.warning(
-    "Ошибка запроса на попытке {}/{}: {}".format(
-    attempt,
-    self.max_retries,
-     e))
+                        "Ошибка запроса на попытке {}/{}: {}".format(
+                            attempt,
+                            self.max_retries,
+                            e))
 
                 except (LLMBadResponseError, LLMResponseParseError) as e:
                     last_error = e
                     logger.warning(
                         "Ошибка ответа на попытке {}/{}: {}".format(
-                        attempt,
-                        self.max_retries,
-                        e
-                    ))
+                            attempt,
+                            self.max_retries,
+                            e
+                        ))
 
         raise LLMRequestError(
             f"Превышено количество попыток ({self.max_retries})"
@@ -168,7 +168,7 @@ if __name__ == "__main__":
     async def main() -> None:
         result = await client.send_request(
             user_content=[{"type": "input_text",
-     "text": "Верни JSON с полем code = 'print(1)'"}],
+                           "text": "Верни JSON с полем code = 'print(1)'"}],
             guided_json={
                 "name": "code_example",
                 "strict": True,

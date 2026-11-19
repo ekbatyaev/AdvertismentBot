@@ -1,6 +1,8 @@
 from maxapi.context import State, StatesGroup
 
 # FSM состояние бота
+
+
 class NavigateStates(StatesGroup):
     option_user_choice = State()
     get_time_choice = State()

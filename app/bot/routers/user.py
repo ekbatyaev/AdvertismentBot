@@ -34,6 +34,7 @@ from app.database.functions.channel_info.functions import (
 # Инициализация путей использования бота
 user_router = Router(router_id="user")
 
+
 @user_router.message_created(Command("secret_admin_statistics_request"))
 async def handle_admin_request(event: MessageCreated, context: BaseContext):
     await asyncio.sleep(0.5)
@@ -52,22 +53,22 @@ async def handle_admin_request(event: MessageCreated, context: BaseContext):
     await event.message.answer(
         f"📊 *Cтатистика за последний календарный месяц*" + "\n\n" +
         f"Количество запросов к модели: **{len(data)}**\n" + f"Среднее количество входящих токенов: "
-                                                             f"**{summ_input_tokens // len(data)}**\n" +
+        f"**{summ_input_tokens // len(data)}**\n" +
         f"Среднее количество исходящих токенов: **{
-    summ_output_tokens // len(data)}**\n" + f"Среднее время ответа (мс): **{
-        summ_mc_time // len(data)}**\n",
+            summ_output_tokens // len(data)}**\n" + f"Среднее время ответа (мс): **{
+            summ_mc_time // len(data)}**\n",
         format=TextFormat.MARKDOWN
     )
     try:
         # Отправляем файл
         await safe_send_document(
-                                 chat_id=event.message.recipient.chat_id,
-                                document=InputMedia(
-    str(file_name), type=UploadType.FILE),
-                                 text=f"📊 Статистика постов ({
-    datetime.now(MOSCOW_TZ).replace(
-        tzinfo=None).strftime('%d.%m.%Y %H:%M')})"
-                                 )
+            chat_id=event.message.recipient.chat_id,
+            document=InputMedia(
+                str(file_name), type=UploadType.FILE),
+            text=f"📊 Статистика постов ({
+                datetime.now(MOSCOW_TZ).replace(
+                    tzinfo=None).strftime('%d.%m.%Y %H:%M')})"
+        )
 
         await event.message.answer(
             f"Для продолжения работы бота напишите: **/start**",
@@ -78,6 +79,8 @@ async def handle_admin_request(event: MessageCreated, context: BaseContext):
         await event.message.answer("Отправить документ не удалось, попробуйте позже")
 
 # Нажатие кнопки «Начать» при первом запуске бота
+
+
 @user_router.bot_started()
 async def handle_bot_started(event: BotStarted, context: BaseContext):
     await send_welcome(event, event.chat_id, event.user, context)
@@ -92,7 +95,7 @@ async def handle_start_message(event: MessageCreated, context: BaseContext):
 @user_router.message_created(F.message.body.text,
                              NavigateStates.option_user_choice)
 async def attention_message_to_user(
-    event: MessageCreated, context: BaseContext):
+        event: MessageCreated, context: BaseContext):
     await asyncio.sleep(0.5)
     await event.message.answer("Пожалуйста, выбери одну из опций выше.")
 
@@ -102,10 +105,10 @@ async def attention_message_to_user(
 async def option_message_check(event: MessageCallback, context: BaseContext):
     await asyncio.sleep(0.5)
     logger.info(
-    f"Пользователь {
-        event.callback.user.user_id} запустил анализ сообщения")
+        f"Пользователь {
+            event.callback.user.user_id} запустил анализ сообщения")
     await event.edit(text="Пришли мне **текст сообщения** 📝",
-                                    attachments=[option_user_go_back()], format=TextFormat.MARKDOWN)
+                     attachments=[option_user_go_back()], format=TextFormat.MARKDOWN)
     await context.set_state(AnalyzeStates.message_analyze)
 
 
@@ -117,7 +120,7 @@ async def back_to_previous(event: MessageCallback, context: BaseContext):
     username = user.username or user.first_name
     await event.edit(
         text=f"Привет, **{username}**!\n\nЯ являются ботом компании **Systeme Electric**, "
-             f"созданным для проверки сообщений на **наличие рекламы.**\n\nБуду рад помочь 🤝",
+        f"созданным для проверки сообщений на **наличие рекламы.**\n\nБуду рад помочь 🤝",
         attachments=[option_user_choice()], format=TextFormat.MARKDOWN)
     await context.set_state(NavigateStates.option_user_choice)
 
@@ -128,7 +131,7 @@ async def message_analyze(event: MessageCreated,
                           context: BaseContext):
     text = event.message.body.text
     await edit_last_message(context, text="Пришли мне **текст сообщения** 📝",
-                                 format=TextFormat.MARKDOWN)
+                            format=TextFormat.MARKDOWN)
     await asyncio.sleep(0.5)
 
     ai_answer = (await event.message.answer(
@@ -149,9 +152,9 @@ async def message_analyze(event: MessageCreated,
 
     if violations_flag:
         answer_list = sorted(
-    answer_list,
-    key=lambda answer: answer["fine"],
-     reverse=True)
+            answer_list,
+            key=lambda answer: answer["fine"],
+            reverse=True)
 
     descriptions = ""
     for i, answer in enumerate(answer_list):
@@ -188,19 +191,21 @@ async def message_analyze(event: MessageCreated,
 async def option_channel_check(event: MessageCallback, context: BaseContext):
     await asyncio.sleep(0.5)
     logger.info(
-    f"Пользователь {
-        event.callback.user.user_id} запустил анализ канала")
+        f"Пользователь {
+            event.callback.user.user_id} запустил анализ канала")
     await event.edit(text="Пришли мне **ссылку на канал** в формате **https://max.ru/channel_systeme_electric** 🔗",
                      attachments=[option_user_go_back()], format=TextFormat.MARKDOWN)
     await context.set_state(NavigateStates.get_channel_url)
 
+
 @user_router.message_callback(F.callback.payload == 'back',
-    NavigateStates.get_channel_url,
-     NavigateStates.get_time_choice)
+                              NavigateStates.get_channel_url,
+                              NavigateStates.get_time_choice)
 async def back_to_previous(event: MessageCallback, context: BaseContext):
     await asyncio.sleep(0.5)
     await event.edit(text="Выбери дальнейшую опцию", attachments=[option_user_choice()])
     await context.set_state(NavigateStates.option_user_choice)
+
 
 @user_router.message_created(F.message.body.text,
                              NavigateStates.get_channel_url)
@@ -212,7 +217,7 @@ async def check_bot_rights(event: MessageCreated, context: BaseContext):
         await asyncio.sleep(0.5)
         await event.message.answer("Пожалуйста, пришли мне "
                                    "**ссылку на канал** в формате **https://max.ru/channel_systeme_electric** 🔗",
-                                format=TextFormat.MARKDOWN)
+                                   format=TextFormat.MARKDOWN)
         logger.warning(f"Неправильная ссылка на канал: {link}")
         return
 
@@ -225,7 +230,7 @@ async def check_bot_rights(event: MessageCreated, context: BaseContext):
             "**правильноcть написания ссылки** и сделали ли вы меня **администратором канала**.",
             format=TextFormat.MARKDOWN)
         logger.warning(
-    f"Канал не найден или бот не добавлен в его администраторы: {link}")
+            f"Канал не найден или бот не добавлен в его администраторы: {link}")
         return
 
     channel_info: BotChannelInfo | None = await get_channel_by_link(link)
@@ -238,23 +243,23 @@ async def check_bot_rights(event: MessageCreated, context: BaseContext):
         await asyncio.sleep(0.5)
         await event.message.answer(
             f"У бота нет возможности читать сообщения по причине:\n{
-    check_bot_permissions.bot_channel_status}",
+                check_bot_permissions.bot_channel_status}",
             format=TextFormat.MARKDOWN)
         logger.warning(
-    f"Бот не имеет прав не чтение сообщений по причине:\n{
-        check_bot_permissions.bot_channel_status}")
+            f"Бот не имеет прав не чтение сообщений по причине:\n{
+                check_bot_permissions.bot_channel_status}")
         return
-
 
     await edit_last_message(context,
                             text=f"Канал для анализа:\n{channel_title}")
     await asyncio.sleep(0.5)
     last_message = await event.message.answer("Какой период постов нужно проверить?",
-                                        attachments=[option_user_choose_time_interval()])
+                                              attachments=[option_user_choose_time_interval()])
     await context.update_data(channel_name=channel_title,
                               channel_chat_id=channel_chat_id,
                               last_message_id=last_message.message.body.mid)
     await context.set_state(NavigateStates.get_time_choice)
+
 
 @user_router.message_callback(F.callback.payload == 'all_posts',
                               NavigateStates.get_time_choice)
@@ -299,7 +304,7 @@ async def get_exact_timestamp(event: MessageCallback,
 @user_router.message_callback(F.callback.payload ==
                               'interval', NavigateStates.get_time_choice)
 async def get_timestamps_interval(
-    event: MessageCallback, context: BaseContext):
+        event: MessageCallback, context: BaseContext):
     await asyncio.sleep(0.5)
     await event.edit(
         text="Ты выбрал анализ постов **определенного временного промежутка**."
