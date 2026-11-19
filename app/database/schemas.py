@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 import numpy as np
 
@@ -7,7 +7,7 @@ class Chunk(BaseModel):
     id: Optional[int] = None
 
     text: str
-    embedding: np.ndarray
+    embedding: np.ndarray = Field(exclude=True)
 
 class SearchResult(BaseModel):
     chunk: Chunk

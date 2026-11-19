@@ -10,7 +10,8 @@ logs/
 .DS_Store
 *.json
 app/ai/database/
-app/database/embedding_model/user-bge-m3-int8/
+app/database/models/user-bge-m3-int8/
+app/database/models/bge-reranker-v2-m3-int8/
 app/database/data*.onnx
 app/database/data/
 tests

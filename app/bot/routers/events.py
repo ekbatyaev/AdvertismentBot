@@ -7,7 +7,7 @@ from maxapi.types.updates.bot_admin_permissions_changed import (
 )
 from app.settings import logger
 from app.schemas import BotChannelInfo
-from app.database.functions.channel_info import add_channel_info, delete_channel_info
+from app.database.functions.channel_info.functions import add_channel_info, delete_channel_info
 
 # Инициализация путей использования бота
 event_router = Router(router_id="event")

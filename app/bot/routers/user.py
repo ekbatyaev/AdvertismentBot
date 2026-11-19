@@ -25,7 +25,7 @@ from maxapi.enums.parse_mode import TextFormat
 from maxapi.enums.upload_type import UploadType
 from maxapi.types import InputMedia, MessageCreated, MessageCallback, BotStarted
 from maxapi.filters.command import CommandStart, Command
-from app.database.functions.channel_info import (
+from app.database.functions.channel_info.functions import (
     get_channel_by_link,
     is_channel_link,
     normalize_channel_link,

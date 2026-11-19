@@ -13,7 +13,7 @@ from maxapi.enums.parse_mode import TextFormat
 from maxapi.context.base import BaseContext
 from maxapi.enums.chat_permission import ChatPermission
 from app.bot.schemas import BotPermissions, SendAnalysis, DateValidation
-from app.database.functions.channel_info import (
+from app.database.functions.channel_info.functions import (
     channel_alias,
     chat_id_from_link,
     get_channel_by_link,

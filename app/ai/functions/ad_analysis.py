@@ -10,7 +10,7 @@ from app.settings import settings, logger, MOSCOW_TZ
 from app.ai.schemas import AiClientSendRequestResponse
 from app.functions import load_data, save_data
 from typing import Any
-from app.database.functions.chunks import search
+from app.database.functions.chunks.functions import search
 from app.database.schemas import SearchResult
 
 
@@ -210,10 +210,10 @@ async def vector_database_law_search(text: str) -> str:
     """
     try:
         founded_chunks: list[SearchResult] = await asyncio.to_thread(
-            search, text, 5, 0.35)
+            search, text, 5, 20, 0.35)
         for query, aux_top_k, aux_similarity in AUX_QUERIES:
             founded_chunks += await asyncio.to_thread(
-                search, query, aux_top_k, aux_similarity)
+                search, query, aux_top_k, 20, aux_similarity)
     except Exception as e:
         logger.warning(
     f"Поиск по базе знаний не удался, анализ без контекста: {e}")

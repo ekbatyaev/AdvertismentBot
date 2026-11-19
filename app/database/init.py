@@ -1,6 +1,6 @@
-from app.database.functions.channel_info import init_channel_info
+from app.database.functions.channel_info.functions import init_channel_info
 from app.settings import logger, settings
-from app.database.functions.chunks import init_chunks
+from app.database.functions.chunks.functions import init_chunks
 import sqlite3
 
 async def init_database() -> None:

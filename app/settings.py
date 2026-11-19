@@ -42,7 +42,8 @@ class Settings(BaseSettings):
     embedding_model_name: str
 
     docs_dir: Path = BASE_DIR / "app" / "database" / "docs"
-    embedding_model_dir: Path = BASE_DIR / "app" / "database/embedding_model/user-bge-m3-int8"
+    embedding_model_dir: Path = BASE_DIR / "app" / "database/models/user-bge-m3-int8"
+    reranker_model_dir: Path = BASE_DIR / "app" / "database/models/bge-reranker-v2-m3-int8"
     ai_logs_dir: Path = LOG_DIR / "ai_logs"
 
     database_path: Path = BASE_DIR / "app" / "database/data/bot.db"
